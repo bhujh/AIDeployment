@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模型量化与压缩技术实战：二值化与三值化网络</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #e0f7fa 0%, #fce4ec 50%, #f3e5f5 100%);
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.92);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 15px 35px rgba(0, 0, 150, 0.1);
+            border: 8px double #5c6bc0;
+            position: relative;
+            overflow: hidden;
+        }
+        .container::before {
+            content: "";
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            border: 4px solid #ffcc80;
+            border-radius: 30px;
+            pointer-events: none;
+            z-index: -1;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 3px dashed #42a5f5;
+        }
+        h1 {
+            color: #1565c0;
+            font-size: 2.8rem;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .subtitle {
+            color: #6a1b9a;
+            font-size: 1.4rem;
+            font-weight: 300;
+        }
+        h2 {
+            color: #d81b60;
+            border-left: 6px solid #ff9800;
+            padding-left: 15px;
+            margin: 30px 0 20px;
+            font-size: 1.8rem;
+        }
+        h3 {
+            color: #388e3c;
+            margin: 25px 0 15px;
+            font-size: 1.4rem;
+        }
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        .highlight {
+            background-color: #fff9c4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .card {
+            background: linear-gradient(to bottom right, #e1f5fe, #f3e5f5);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 25px 0;
+            border: 2px solid #ce93d8;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+        th, td {
+            border: 1px solid #bbdefb;
+            padding: 15px;
+            text-align: center;
+        }
+        th {
+            background-color: #64b5f6;
+            color: white;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #e3f2fd;
+        }
+        ul, ol {
+            padding-left: 30px;
+            margin: 15px 0;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .svg-container {
+            text-align: center;
+            margin: 30px 0;
+            background-color: white;
+            padding: 20px;
+            border-radius: 15px;
+            border: 2px solid #a5d6a7;
+        }
+        .code-block {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            border-left: 5px solid #ff9800;
+        }
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 3px dashed #42a5f5;
+            color: #5d4037;
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+        .comparison {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: space-around;
+            margin: 30px 0;
+        }
+        .comparison-item {
+            flex: 1;
+            min-width: 250px;
+            background: #e8f5e9;
+            padding: 20px;
+            border-radius: 15px;
+            border: 2px solid #81c784;
+        }
+        .comparison-item h4 {
+            color: #2e7d32;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .tech-tip {
+            background-color: #ffecb3;
+            border-left: 6px solid #ffb300;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 10px 10px 0;
+        }
+        .keyword {
+            color: #c2185b;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>模型量化与压缩技术实战</h1>
+            <p class="subtitle">第二十二讲：二值化与三值化网络：XNOR-Net、DoReFa-Net、TWN、极端量化下的训练技巧与精度恢复</p>
+        </header>
+
+        <section>
+            <h2>一、概述：极致的模型压缩</h2>
+            <p>在边缘计算和移动设备上部署深度学习模型时，<span class="highlight">模型大小、计算开销和内存带宽</span>是核心瓶颈。二值化（Binary）与三值化（Ternary）网络将权重和/或激活值量化到极少的离散值（如{-1, +1} 或 {-1, 0, +1}），从而实现：</p>
+            <ul>
+                <li><span class="keyword">极高的压缩率</span>：权重存储减少32倍（相比FP32）。</li>
+                <li><span class="keyword">极快的推理速度</span>：用位运算（XNOR, Popcount）替代浮点乘加。</li>
+                <li><span class="keyword">极低的功耗</span>：减少内存访问和复杂计算。</li>
+            </ul>
+            <p>本讲将深入剖析三种代表性网络：<strong>XNOR-Net</strong>、<strong>DoReFa-Net</strong>、<strong>TWN</strong>，并探讨极端量化下的训练技巧与精度恢复策略。</p>
+        </section>
+
+        <section class="card">
+            <h2>二、核心算法详解</h2>
+
+            <h3>1. XNOR-Net: 二值化权重与激活</h3>
+            <p>XNOR-Net 由 Rastegari 等人提出，核心思想是将卷积运算近似为二值运算。</p>
+            <div class="svg-container">
+                <svg width="100%" height="180" viewBox="0 0 800 180">
+                    <rect x="10" y="60" width="120" height="60" rx="5" fill="#bbdefb" stroke="#64b5f6" stroke-width="2"/>
+                    <text x="70" y="95" text-anchor="middle" fill="#0d47a1" font-weight="bold">FP32 权重</text>
+                    <path d="M 130 90 L 170 90" stroke="#d81b60" stroke-width="3" marker-end="url(#arrow)"/>
+                    <rect x="170" y="60" width="120" height="60" rx="5" fill="#c8e6c9" stroke="#388e3c" stroke-width="2"/>
+                    <text x="230" y="95" text-anchor="middle" fill="#1b5e20" font-weight="bold">Sign() 二值化</text>
+                    <path d="M 290 90 L 330 90" stroke="#d81b60" stroke-width="3" marker-end="url(#arrow)"/>
+                    <rect x="330" y="60" width="120" height="60" rx="5" fill="#ffccbc" stroke="#ff5722" stroke-width="2"/>
+                    <text x="390" y="95" text-anchor="middle" fill="#bf360c" font-weight="bold">缩放因子 α</text>
+                    <path d="M 450 90 L 490 90" stroke="#d81b60" stroke-width="3" marker-end="url(#arrow)"/>
+                    <rect x="490" y="60" width="120" height="60" rx="5" fill="#fff9c4" stroke="#ffb300" stroke-width="2"/>
+                    <text x="550" y="95" text-anchor="middle" fill="#ff6f00" font-weight="bold">二值权重 W≈αB</text>
+                    <defs>
+                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" fill="#d81b60"/>
+                        </marker>
+                    </defs>
+                </svg>
+                <p><em>图1: XNOR-Net 权重二值化流程</em></p>
+            </div>
+            <p><strong>关键公式：</strong></p>
+            <div class="code-block">
+<pre>卷积近似： I * W ≈ (sign(I) ⊙ sign(W)) * α * β
+其中：
+    sign(x) = +1 if x ≥ 0, else -1
+    α = mean(|W|)  (权重缩放因子)
+    β = mean(|I|)  (激活缩放因子，按通道计算)
+核心操作： XNOR + bitcount 替代浮点乘加</pre>
+            </div>
+
+            <h3>2. DoReFa-Net: 低比特权重、激活与梯度</h3>
+            <p>DoReFa-Net 将量化扩展到前向的权重、激活以及反向传播的梯度，实现端到端的低比特训练。</p>
+            <table>
+                <thead>
+                    <tr><th>量化对象</th><th>比特数</th><th>量化函数</th><th>特点</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>权重</td><td>1-bit (二值) 或 2-bit</td><td>tanh(·) + 线性量化</td><td>约束在[-1,1]</td></tr>
+                    <tr><td>激活</td><td>2-bit 或 4-bit</td><td>量化到 [0, 1]</td><td>使用分段常数函数</td></tr>
+                    <tr><td>梯度</td><td>6-bit 或 8-bit</td><td>随机量化</td><td>保持无偏估计</td></tr>
+                </tbody>
+            </table>
+
+            <h3>3. TWN (Ternary Weight Networks): 三值化权重</h3>
+            <p>TWN 将权重约束为三个值：{-α, 0, +α}，在二值化的基础上增加了零值，提供了更好的表达能力。</p>
+            <div class="code-block">
+<pre># 三值化核心代码 (PyTorch 风格)
+def ternary_weight(W, delta=0.7):
+    # delta: 缩放比例阈值，控制稀疏度
+    alpha = torch.mean(torch.abs(W))
+    threshold = delta * alpha
+    mask_neg = (W < -threshold).float()
+    mask_pos = (W > threshold).float()
+    W_ternary = mask_pos * alpha + mask_neg * (-alpha)
+    # 直通估计器 (STE) 用于梯度回传
+    return W_ternary + (W - W).detach()  # 保持梯度流</pre>
+            </div>
+        </section>
+
+        <section>
+            <h2>三、算法对比</h2>
+            <div class="comparison">
+                <div class="comparison-item">
+                    <h4>XNOR-Net</h4>
+                    <ul>
+                        <li><strong>量化对象</strong>: 权重(二值)、激活(二值)</li>
+                        <li><strong>核心创新</strong>: XNOR-Popcount 加速</li>
+                        <li><strong>优点</strong>: 速度极快，压缩率高</li>
+                        <li><strong>挑战</strong>: 精度损失较大</li>
+                    </ul>
+                </div>
+                <div class="comparison-item">
+                    <h4>DoReFa-Net</h4>
+                    <ul>
+                        <li><strong>量化对象</strong>: 权/激/梯 (多比特)</li>
+                        <li><strong>核心创新</strong>: 梯度量化，端到端训练</li>
+                        <li><strong>优点</strong>: 灵活，支持不同比特配置</li>
+                        <li><strong>挑战</strong>: 梯度量化噪声</li>
+                    </ul>
+                </div>
+                <div class="comparison-item">
+                    <h4>TWN</h4>
+                    <ul>
+                        <li><strong>量化对象</strong>: 权重(三值)</li>
+                        <li><strong>核心创新</strong>: 引入零值，增加稀疏性</li>
+                        <li><strong>优点</strong>: 精度优于二值，仍有加速</li>
+                        <li><strong>挑战</strong>: 需要阈值调参</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>四、极端量化下的训练技巧与精度恢复</h2>
+            <p>直接进行极端量化会导致严重的精度下降。以下技巧至关重要：</p>
+
+            <h3>1. 训练技巧</h3>
+            <ul>
+                <li><span class="keyword">预训练与微调</span>: 先在FP32上预训练，再加载权重进行量化微调。</li>
+                <li><span class="keyword">渐进式量化</span>: 从高比特（如8-bit）开始，逐步降低到1/2-bit。</li>
+                <li><span class="keyword">直通估计器 (STE)</span>: 在反向传播时绕过不可微的量化函数。
+                    <div class="code-block">
+<pre># STE 示例
+class SignSTE(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, x):
+        return torch.sign(x)
+    @staticmethod
+    def backward(ctx, grad_output):
+        # 直接传递梯度，或使用梯度裁剪/近似
+        return grad_output.clamp(-1, 1)</pre>
+                    </div>
+                </li>
+                <li><span class="keyword">学习缩放因子</span>: 将缩放因子α设为可学习参数，而非简单计算均值。</li>
+                <li><span class="keyword">权重归一化</span>: 量化前对权重进行归一化（如L1、L2范数），稳定训练。</li>
+            </ul>
+
+            <h3>2. 精度恢复策略</h3>
+            <ol>
+                <li><strong>知识蒸馏 (KD)</strong>: 使用全精度教师网络指导二值化学生网络训练。</li>
+                <li><strong>激活分布调整</strong>: 在激活函数前加入可学习的偏移（bias）或缩放（scale），适配二值化。</li>
+                <li><strong>结构优化</strong>:
+                    <ul>
+                        <li>加宽第一层和最后一层（保持较高精度）。</li>
+                        <li>使用 shortcut 结构（如ResNet）缓解梯度消失。</li>
+                    </ul>
+                </li>
+                <li><strong>精细调参</strong>: 使用更小的学习率、更长的训练周期、特定的优化器（如Adam）。</li>
+            </ol>
+
+            <div class="tech-tip">
+                <strong>实战提示：</strong> 对于首次尝试，建议从 TWN 或 DoReFa-Net (2-bit) 开始，它们比纯二值网络更容易获得可接受的精度。同时，务必在验证集上监控精度变化，并耐心调整超参数。
+            </div>
+        </section>
+
+        <section>
+            <h2>五、总结与展望</h2>
+            <p>二值化与三值化网络代表了模型压缩的<strong>极端追求</strong>。它们在特定场景（如资源极度受限的嵌入式设备）下具有不可替代的价值。然而，其<span class="highlight">精度与效率的权衡</span>仍是核心挑战。</p>
+            <p>未来的研究方向可能包括：</p>
+            <ul>
+                <li>更智能的混合精度量化（不同层使用不同比特）。</li>
+                <li>硬件友好的稀疏二值化模式设计。</li>
+                <li>结合神经架构搜索（NAS）自动寻找适合量化的网络结构。</li>
+                <li>探索二值化在Transformer等新兴架构上的应用。</li>
+            </ul>
+            <p>掌握这些极端量化技术，将使你能够将强大的深度学习模型部署到任何角落，真正实现AI的普惠与落地。</p>
+        </section>
+
+        <footer>
+            <p>更多深度学习、模型压缩、部署实战资料，请关注</p>
+            <p><strong>公众号: 蓝海资料掘金营，微信 deep3321</strong></p>
+            <p>© 2026 模型量化与压缩技术实战课程. 保留所有权利。</p>
+        </footer>
+    </div>
+</body>
+</html>

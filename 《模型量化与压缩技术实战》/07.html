@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模型量化与压缩技术实战 - 第七章</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #f9f3e9 0%, #e6f2ff 100%);
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.92);
+            border: 8px double #4a90e2;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(74, 144, 226, 0.15);
+            padding: 40px;
+            position: relative;
+            overflow: hidden;
+        }
+        .container::before {
+            content: "";
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            border: 4px solid #ffcc00;
+            border-radius: 28px;
+            pointer-events: none;
+            z-index: -1;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 25px;
+            border-bottom: 3px dashed #ff9966;
+        }
+        h1 {
+            color: #2c5aa0;
+            font-size: 2.8rem;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        .subtitle {
+            color: #ff6600;
+            font-size: 1.4rem;
+            font-weight: 600;
+        }
+        h2 {
+            color: #339966;
+            border-left: 6px solid #ff9966;
+            padding-left: 15px;
+            margin: 35px 0 20px;
+            font-size: 1.9rem;
+        }
+        h3 {
+            color: #4a90e2;
+            margin: 25px 0 15px;
+            font-size: 1.5rem;
+        }
+        p {
+            margin-bottom: 18px;
+            text-align: justify;
+            font-size: 1.05rem;
+        }
+        .content-box {
+            background: linear-gradient(to right, #f0f9ff, #fff9f0);
+            border: 2px solid #aad6ff;
+            border-radius: 12px;
+            padding: 22px;
+            margin: 25px 0;
+            box-shadow: 0 5px 15px rgba(170, 214, 255, 0.3);
+        }
+        ul, ol {
+            padding-left: 30px;
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 12px rgba(0,0,0,0.08);
+        }
+        th {
+            background-color: #4a90e2;
+            color: white;
+            padding: 16px;
+            text-align: left;
+            font-weight: 600;
+        }
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #d1e7ff;
+        }
+        tr:nth-child(even) {
+            background-color: #f0f9ff;
+        }
+        tr:hover {
+            background-color: #e6f2ff;
+        }
+        .svg-container {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background-color: white;
+            border-radius: 12px;
+            border: 2px solid #ffcc66;
+        }
+        .architecture-svg {
+            width: 100%;
+            max-width: 800px;
+            height: auto;
+        }
+        pre {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 25px 0;
+            border-left: 5px solid #ff9966;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        code {
+            font-family: 'Courier New', monospace;
+        }
+        .highlight {
+            background-color: #fffacd;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            color: #d35400;
+        }
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 25px;
+            border-top: 3px dashed #339966;
+            color: #666;
+            font-size: 1.1rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        .footer-text {
+            background: linear-gradient(90deg, #ff9966, #4a90e2);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            border: 2px solid #ffcc00;
+        }
+        .badge {
+            display: inline-block;
+            background-color: #ff9966;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.9rem;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .note {
+            background-color: #e6f7ff;
+            border-left: 5px solid #1890ff;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>第7章：权重量化与激活量化</h1>
+            <p class="subtitle">权重量化策略、激活量化挑战与解决方案、混合精度量化、逐层与逐通道量化</p>
+            <p>本章深入探讨模型量化的核心组成部分：如何对模型的权重(Weights)和激活(Activations)进行高效、低损失的数值表示转换，以实现模型压缩与加速。</p>
+        </header>
+
+        <main>
+            <section>
+                <h2>一、权重量化策略</h2>
+                <div class="content-box">
+                    <p>权重量化是将神经网络中全精度（通常是FP32）的权重参数转换为低精度（如INT8, INT4）表示的过程，旨在减少模型存储空间和内存带宽需求。</p>
+                    <h3>主要策略：</h3>
+                    <ul>
+                        <li><span class="highlight">对称量化</span>：量化范围关于零点对称。公式：<code>Q = round(W / scale)</code>。计算简单，但可能浪费非对称分布的动态范围。</li>
+                        <li><span class="highlight">非对称量化</span>：量化范围由最小值和最大值确定。公式：<code>Q = round((W - zero_point) / scale)</code>。能更好地利用数值范围，精度损失更小。</li>
+                        <li><span class="highlight">后训练量化(PTQ)</span>：在模型训练完成后，利用校准数据集统计权重/激活的范围，然后进行量化。部署快速，但精度可能下降。</li>
+                        <li><span class="highlight">量化感知训练(QAT)</span>：在训练的前向传播中模拟量化效应，让模型在训练过程中“适应”低精度。精度保持更好，但需要重新训练。</li>
+                    </ul>
+                    <div class="svg-container">
+                        <svg class="architecture-svg" viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="50" y="80" width="180" height="60" rx="10" fill="#aad6ff" stroke="#4a90e2" stroke-width="3"/>
+                            <text x="140" y="115" text-anchor="middle" fill="#2c5aa0" font-weight="bold" font-size="16">FP32权重</text>
+                            <polygon points="250,110 290,95 290,125" fill="#ff9966"/>
+                            <text x="270" y="140" text-anchor="middle" fill="#ff6600" font-size="14">量化函数</text>
+                            <rect x="310" y="80" width="180" height="60" rx="10" fill="#ffcc99" stroke="#ff9966" stroke-width="3"/>
+                            <text x="400" y="115" text-anchor="middle" fill="#d35400" font-weight="bold" font-size="16">INT8权重</text>
+                            <polygon points="510,110 550,95 550,125" fill="#339966"/>
+                            <text x="530" y="140" text-anchor="middle" fill="#339966" font-size="14">反量化</text>
+                            <rect x="570" y="80" width="180" height="60" rx="10" fill="#b3e0b3" stroke="#339966" stroke-width="3"/>
+                            <text x="660" y="115" text-anchor="middle" fill="#2c5aa0" font-weight="bold" font-size="16">推理(FP32)</text>
+                            <line x1="230" y1="110" x2="250" y2="110" stroke="#666" stroke-width="2"/>
+                            <line x1="490" y1="110" x2="510" y2="110" stroke="#666" stroke-width="2"/>
+                            <line x1="750" y1="110" x2="770" y2="110" stroke="#666" stroke-width="2"/>
+                        </svg>
+                        <p><em>权重量化与反量化流程示意图</em></p>
+                    </div>
+                    <div class="note">
+                        <strong>关键点：</strong> 选择量化策略时，需权衡精度损失、计算复杂度与硬件支持。对称量化广泛用于GPU，非对称量化在移动端CPU更常见。
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h2>二、激活量化挑战与解决方案</h2>
+                <div class="content-box">
+                    <p>激活量化指对网络层输出（激活值）进行量化。由于激活值动态范围大且分布随输入变化，其量化比权重量化更具挑战性。</p>
+                    <h3>主要挑战：</h3>
+                    <ol>
+                        <li><span class="highlight">动态范围大</span>：激活值范围可能因输入样本差异巨大，难以确定固定的量化参数。</li>
+                        <li><span class="highlight">离群值(Outliers)</span>：少数极大值会“挤占”量化区间，导致大部分值量化分辨率不足。</li>
+                        <li><span class="highlight">分布非均匀</span>：激活分布常为非均匀（如经过ReLU后全为正），对称量化效率低。</li>
+                    </ol>
+                    <h3>解决方案：</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>解决方案</th>
+                                <th>描述</th>
+                                <th>优点</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>校准数据集</strong></td>
+                                <td>使用代表性数据（无标签）运行模型，统计各层激活的min/max或直方图，确定scale/zero_point。</td>
+                                <td>简单有效，PTQ标准流程。</td>
+                            </tr>
+                            <tr>
+                                <td><strong>移动平均统计</strong></td>
+                                <td>在训练或推理过程中，动态更新激活的统计量（如EMA），适应数据分布变化。</td>
+                                <td>适应在线场景，更鲁棒。</td>
+                            </tr>
+                            <tr>
+                                <td><strong>离群值处理</strong></td>
+                                <td>裁剪(Clipping)或通道分离，将离群值限制在一定范围内，或单独处理。</td>
+                                <td>显著提升量化分辨率。</td>
+                            </tr>
+                            <tr>
+                                <td><strong>激活函数融合</strong></td>
+                                <td>将ReLU等激活函数与卷积/全连接层融合，减少量化操作次数和误差累积。</td>
+                                <td>提升精度与速度。</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <pre><code># 示例：简单的激活校准（统计最大绝对值）
+def calibrate_activation(model, calib_loader):
+    max_vals = {}
+    for data in calib_loader:
+        output = model(data)
+        for name, module in model.named_modules():
+            if isinstance(module, torch.nn.ReLU):
+                # 假设已注册hook来捕获输出
+                act_val = module.activation_cache
+                max_val = act_val.abs().max().item()
+                max_vals[name] = max(max_vals.get(name, 0), max_val)
+    # 计算scale (对称量化)
+    scales = {name: val / 127.0 for name, val in max_vals.items()}
+    return scales</code></pre>
+                </div>
+            </section>
+
+            <section>
+                <h2>三、混合精度量化</h2>
+                <div class="content-box">
+                    <p>混合精度量化指对模型的不同部分采用不同的量化精度（如部分层用INT8，部分用FP16或FP32），在精度和效率间取得最佳平衡。</p>
+                    <div class="svg-container">
+                        <svg class="architecture-svg" viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="50" y="50" width="700" height="200" rx="15" fill="#f9f3e9" stroke="#ff9966" stroke-width="3" stroke-dasharray="5,5"/>
+                            <text x="400" y="80" text-anchor="middle" fill="#2c5aa0" font-size="18" font-weight="bold">混合精度量化模型架构示例</text>
+                            <!-- FP32部分 -->
+                            <rect x="100" y="110" width="120" height="60" rx="8" fill="#aad6ff" stroke="#4a90e2" stroke-width="2"/>
+                            <text x="160" y="145" text-anchor="middle" fill="#2c5aa0" font-size="14" font-weight="bold">输入层(FP32)</text>
+                            <!-- INT8部分 -->
+                            <rect x="250" y="110" width="120" height="60" rx="8" fill="#ffcc99" stroke="#ff9966" stroke-width="2"/>
+                            <text x="310" y="145" text-anchor="middle" fill="#d35400" font-size="14" font-weight="bold">卷积块1(INT8)</text>
+                            <!-- FP16部分 -->
+                            <rect x="400" y="110" width="120" height="60" rx="8" fill="#b3e0b3" stroke="#339966" stroke-width="2"/>
+                            <text x="460" y="145" text-anchor="middle" fill="#2c5aa0" font-size="14" font-weight="bold">注意力(FP16)</text>
+                            <!-- INT8部分 -->
+                            <rect x="550" y="110" width="120" height="60" rx="8" fill="#ffcc99" stroke="#ff9966" stroke-width="2"/>
+                            <text x="610" y="145" text-anchor="middle" fill="#d35400" font-size="14" font-weight="bold">卷积块2(INT8)</text>
+                            <!-- 连接线 -->
+                            <polygon points="220,140 250,140" fill="none" stroke="#666" stroke-width="2"/>
+                            <polygon points="370,140 400,140" fill="none" stroke="#666" stroke-width="2"/>
+                            <polygon points="520,140 550,140" fill="none" stroke="#666" stroke-width="2"/>
+                            <!-- 图例 -->
+                            <rect x="100" y="190" width="20" height="20" fill="#aad6ff" stroke="#4a90e2" stroke-width="1"/>
+                            <text x="130" y="205" font-size="12">FP32</text>
+                            <rect x="200" y="190" width="20" height="20" fill="#ffcc99" stroke="#ff9966" stroke-width="1"/>
+                            <text x="230" y="205" font-size="12">INT8</text>
+                            <rect x="300" y="190" width="20" height="20" fill="#b3e0b3" stroke="#339966" stroke-width="1"/>
+                            <text x="330" y="205" font-size="12">FP16</text>
+                        </svg>
+                    </div>
+                    <h3>实施方法：</h3>
+                    <ul>
+                        <li><span class="highlight">敏感度分析</span>：逐层评估量化误差对整体精度的影响，对敏感层保留高精度。</li>
+                        <li><span class="highlight">硬件感知搜索</span>：结合目标硬件（如GPU Tensor Core, NPU）的加速能力，自动搜索每层最优精度。</li>
+                        <li><span class="highlight">分层策略</span>：例如，将第一层和最后一层保持为FP32（对输入输出敏感），中间层量化为INT8。</li>
+                    </ul>
+                    <p><span class="badge">最佳实践</span> 使用工具（如TensorRT, AIMET, NNCF）自动进行敏感度分析并生成混合精度配置。</p>
+                </div>
+            </section>
+
+            <section>
+                <h2>四、逐层与逐通道量化</h2>
+                <div class="content-box">
+                    <p>这是两种不同的量化粒度，决定了量化参数（scale, zero_point）的应用范围。</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>量化粒度</th>
+                                <th>描述</th>
+                                <th>计算开销</th>
+                                <th>精度</th>
+                                <th>典型应用</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>逐层量化</strong><br>(Per-Tensor)</td>
+                                <td>整个张量（一层所有通道）共享一套量化参数。</td>
+                                <td>低</td>
+                                <td>较低（分布差异大时损失大）</td>
+                                <td>早期硬件，简单模型</td>
+                            </tr>
+                            <tr>
+                                <td><strong>逐通道量化</strong><br>(Per-Channel)</td>
+                                <td>对卷积核的每个输出通道（或权重的特定维度）使用独立的量化参数。</td>
+                                <td>中高</td>
+                                <td>高（适应通道间分布差异）</td>
+                                <td>现代AI加速器（如TPU, 高通DSP）</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <h3>对比与选择：</h3>
+                    <ul>
+                        <li><span class="highlight">逐层量化</span>：实现简单，硬件支持广泛，但假设张量内数据分布均匀，对于深度可分离卷积等结构误差大。</li>
+                        <li><span class="highlight">逐通道量化</span>：尤其适用于<b>权重</b>量化，能有效处理通道间数值范围差异大的问题（如Depthwise Convolution）。激活量化一般仍用逐层。</li>
+                    </ul>
+                    <pre><code># PyTorch 中指定逐通道量化示例
+import torch
+import torch.quantization
+
+# 准备模型
+model = torch.quantization.QuantWrapper(MyModel())
+model.qconfig = torch.quantization.get_default_qconfig('fbgemm') # 针对服务器端
+
+# 对于卷积层，PyTorch默认对权重使用逐通道量化，激活使用逐层量化
+model_prepared = torch.quantization.prepare(model, inplace=False)
+# ... 校准 ...
+model_quantized = torch.quantization.convert(model_prepared)
+
+print(model_quantized.conv1.weight().q_per_channel)  # 应输出 True</code></pre>
+                    <div class="note">
+                        <strong>注意：</strong> 逐通道量化需要硬件支持相应的逐通道缩放操作。在部署前务必确认目标推理引擎（如TFLite, ONNX Runtime）的支持情况。
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h2>本章总结</h2>
+                <div class="content-box">
+                    <p>权重量化与激活量化是模型压缩的基石。成功的量化部署需要：</p>
+                    <ol>
+                        <li>根据模型结构和数据分布，<span class="highlight">选择合适的量化策略（对称/非对称，PTQ/QAT）</span>。</li>
+                        <li>正视激活量化的挑战，采用<span class="highlight">校准、裁剪等技术</span>稳定量化范围。</li>
+                        <li>利用<span class="highlight">混合精度量化</span>在敏感层与效率层之间取得平衡。</li>
+                        <li>依据硬件能力选择<span class="highlight">量化粒度（逐层/逐通道）</span>，最大化利用计算资源。</li>
+                    </ol>
+                    <p>通过本章的学习，您应能设计并实施一个完整的模型量化方案，将大型FP32模型高效地转换为轻量化的低精度模型，服务于边缘设备与实时应用。</p>
+                    <div style="text-align: center; margin-top: 20px;">
+                        <span class="badge" style="background-color: #4a90e2;">量化</span>
+                        <span class="badge" style="background-color: #ff9966;">压缩</span>
+                        <span class="badge" style="background-color: #339966;">加速</span>
+                        <span class="badge" style="background-color: #ff6600;">部署</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p class="footer-text">公众号: 蓝海资料掘金营，微信 deep3321</p>
+            <p style="margin-top: 10px; font-size: 0.9rem; color: #888;">《模型量化与压缩技术实战》课程材料 · 版权所有</p>
+        </footer>
+    </div>
+</body>
+</html>

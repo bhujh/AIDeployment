@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyTorch模型部署实战：动态形状支持</title>
+    <style>
+        :root {
+            --primary-blue: #4A90E2;
+            --secondary-green: #7ED321;
+            --accent-yellow: #F8E71C;
+            --accent-orange: #F5A623;
+            --accent-red: #D0021B;
+            --light-bg: #F0F7FF;
+            --card-bg: #FFFFFF;
+            --text-dark: #333333;
+            --text-light: #666666;
+            --shadow: rgba(0, 0, 0, 0.1);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, var(--light-bg) 0%, #E6F2FF 100%);
+            color: var(--text-dark);
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(90deg, var(--primary-blue), var(--secondary-green));
+            color: white;
+            border-radius: 20px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 20px var(--shadow);
+        }
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        main {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+        }
+        .card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 16px var(--shadow);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border-top: 6px solid var(--primary-blue);
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px var(--shadow);
+        }
+        .card:nth-child(2) { border-top-color: var(--secondary-green); }
+        .card:nth-child(3) { border-top-color: var(--accent-orange); }
+        .card:nth-child(4) { border-top-color: var(--accent-red); }
+        h2 {
+            color: var(--primary-blue);
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px dashed var(--accent-yellow);
+        }
+        h3 {
+            color: var(--secondary-green);
+            margin: 15px 0 10px;
+        }
+        ul, ol {
+            padding-left: 20px;
+            margin: 10px 0;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px var(--shadow);
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background-color: var(--primary-blue);
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        pre {
+            background: #f5f5f5;
+            border-left: 4px solid var(--accent-orange);
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+        code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+        .svg-container {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px var(--shadow);
+        }
+        svg {
+            max-width: 100%;
+            height: auto;
+        }
+        footer {
+            text-align: center;
+            padding: 25px;
+            margin-top: 40px;
+            background: linear-gradient(90deg, var(--primary-blue), var(--secondary-green));
+            color: white;
+            border-radius: 15px;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+            box-shadow: 0 -5px 15px var(--shadow);
+        }
+        .highlight {
+            background-color: #FFF9C4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .note {
+            background-color: #E3F2FD;
+            border-left: 4px solid var(--primary-blue);
+            padding: 12px 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>PyTorch模型部署实战</h1>
+        <p class="subtitle">第13讲：动态形状支持 — 动态批次、动态维度、配置优化与运行时形状推断</p>
+    </header>
+
+    <main>
+        <section class="card">
+            <h2>📊 动态形状支持概述</h2>
+            <p>在实际部署中，模型的输入尺寸往往不是固定的。动态形状支持允许模型处理可变尺寸的输入，是生产环境部署的关键能力。</p>
+            <div class="svg-container">
+                <svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="50" y="80" width="100" height="60" fill="#4A90E2" stroke="#333" stroke-width="2"/>
+                    <text x="100" y="115" text-anchor="middle" fill="white" font-size="14">PyTorch</text>
+                    <polygon points="180,110 200,90 220,110 200,130" fill="#7ED321" stroke="#333" stroke-width="2"/>
+                    <rect x="250" y="80" width="100" height="60" fill="#F5A623" stroke="#333" stroke-width="2"/>
+                    <text x="300" y="115" text-anchor="middle" fill="white" font-size="14">TensorRT</text>
+                    <line x1="150" y1="110" x2="180" y2="110" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+                    <line x1="220" y1="110" x2="250" y2="110" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+                    <defs>
+                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" fill="#333"/>
+                        </marker>
+                    </defs>
+                    <text x="200" y="50" text-anchor="middle" fill="#D0021B" font-size="16" font-weight="bold">动态形状转换流程</text>
+                </svg>
+            </div>
+            <ul>
+                <li><span class="highlight">动态批次</span>：批量大小在运行时可变。</li>
+                <li><span class="highlight">动态维度</span>：如图像宽高、序列长度等维度可变。</li>
+                <li><span class="highlight">配置文件优化</span>：针对动态范围生成优化配置。</li>
+                <li><span class="highlight">运行时形状推断</span>：引擎根据实际输入调整内部结构。</li>
+            </ul>
+        </section>
+
+        <section class="card">
+            <h2>⚙️ ONNX 动态轴设置</h2>
+            <p>在导出ONNX模型时，通过 <code>dynamic_axes</code> 参数指定动态维度。</p>
+            <pre><code>import torch
+import torch.onnx
+
+model = ... # 你的PyTorch模型
+dummy_input = torch.randn(1, 3, 224, 224)
+
+# 定义动态轴：批次（第0维）和图像高度/宽度（第2、3维）为动态
+dynamic_axes = {
+    'input': {0: 'batch_size', 2: 'height', 3: 'width'},
+    'output': {0: 'batch_size'}
+}
+
+torch.onnx.export(
+    model,
+    dummy_input,
+    "dynamic_model.onnx",
+    input_names=['input'],
+    output_names=['output'],
+    dynamic_axes=dynamic_axes,
+    opset_version=13
+)</code></pre>
+            <div class="note">
+                <strong>提示：</strong> ONNX opset 11+ 对动态形状支持更好。确保模型中所有操作都支持动态尺寸。
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>🔧 TensorRT 动态形状配置</h2>
+            <p>TensorRT 使用 <code>IOptimizationProfile</code> 来定义每个动态输入的最小、最优、最大尺寸。</p>
+            <h3>配置步骤</h3>
+            <ol>
+                <li>创建优化配置文件（Optimization Profile）。</li>
+                <li>为每个输入设置动态范围。</li>
+                <li>将配置文件添加到构建配置中。</li>
+                <li>在推理时，为每个上下文设置活动配置文件。</li>
+            </ol>
+            <pre><code># Python API 示例（TensorRT）
+import tensorrt as trt
+
+builder = trt.Builder(logger)
+network = builder.create_network(1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH))
+parser = trt.OnnxParser(network, logger)
+
+# 解析ONNX模型
+with open("dynamic_model.onnx", "rb") as f:
+    parser.parse(f.read())
+
+config = builder.create_builder_config()
+profile = builder.create_optimization_profile()
+
+# 设置动态输入：input_name, min_shape, optimal_shape, max_shape
+profile.set_shape("input", 
+                  min=(1, 3, 224, 224), 
+                  opt=(8, 3, 224, 224), 
+                  max=(32, 3, 512, 512))
+config.add_optimization_profile(profile)
+
+# 构建引擎
+engine = builder.build_engine(network, config)</code></pre>
+            <table>
+                <thead>
+                    <tr><th>形状类型</th><th>用途</th><th>示例值</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>最小形状 (min)</td><td>确定内存下限，用于最坏情况优化</td><td>(1, 3, 224, 224)</td></tr>
+                    <tr><td>最优形状 (opt)</td><td>最常见的输入尺寸，用于内核优化</td><td>(8, 3, 224, 224)</td></tr>
+                    <tr><td>最大形状 (max)</td><td>内存分配上限，防止溢出</td><td>(32, 3, 512, 512)</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="card">
+            <h2>📈 运行时形状推断与执行</h2>
+            <p>TensorRT 引擎在运行时根据实际输入形状选择最优内核并执行。</p>
+            <div class="svg-container">
+                <svg viewBox="0 0 400 250" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="50" y="30" width="300" height="50" rx="10" fill="#4A90E2" stroke="#333" stroke-width="2"/>
+                    <text x="200" y="62" text-anchor="middle" fill="white" font-size="16" font-weight="bold">输入动态形状</text>
+                    <rect x="50" y="100" width="300" height="50" rx="10" fill="#7ED321" stroke="#333" stroke-width="2"/>
+                    <text x="200" y="132" text-anchor="middle" fill="white" font-size="16" font-weight="bold">TensorRT 上下文</text>
+                    <rect x="50" y="170" width="300" height="50" rx="10" fill="#F5A623" stroke="#333" stroke-width="2"/>
+                    <text x="200" y="202" text-anchor="middle" fill="white" font-size="16" font-weight="bold">输出结果</text>
+                    <polygon points="200,80 210,90 190,90" fill="#333"/>
+                    <polygon points="200,150 210,160 190,160" fill="#333"/>
+                    <text x="200" y="240" text-anchor="middle" fill="#D0021B" font-size="14">运行时形状推断流程</text>
+                </svg>
+            </div>
+            <pre><code># 运行时设置动态形状并执行
+context = engine.create_execution_context()
+
+# 设置当前输入的形状
+input_shape = (4, 3, 256, 256)  # 实际输入形状
+context.set_binding_shape(0, input_shape)
+
+# 分配输入/输出缓冲区
+inputs, outputs, bindings = ... # 分配GPU内存
+
+# 执行推理
+context.execute_v2(bindings=bindings)</code></pre>
+            <h3>最佳实践</h3>
+            <ul>
+                <li>尽量缩小最小与最大形状的范围，以减少内存开销。</li>
+                <li>最优形状应设置为最频繁出现的尺寸，以获得最佳性能。</li>
+                <li>对于多输入模型，确保所有输入的动态轴设置一致。</li>
+                <li>使用 <code>context.all_binding_shapes_specified</code> 检查形状是否已完全指定。</li>
+            </ul>
+        </section>
+    </main>
+
+    <footer>
+        蓝海资料掘金营 © 2023 - 深度学习部署专家课程
+    </footer>
+</body>
+</html>

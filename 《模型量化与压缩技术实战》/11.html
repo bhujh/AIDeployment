@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模型量化与压缩技术实战 - 非结构化剪枝与稀疏化</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50; /* 青草绿 */
+            --secondary-color: #FF9800; /* 活力橙 */
+            --accent-color: #2196F3; /* 天空蓝 */
+            --light-color: #FFF9C4; /* 淡鹅黄 */
+            --background-color: #F5F5F5; /* 浅灰背景 */
+            --text-color: #333333;
+            --border-color: #795548; /* 大地棕 */
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .container {
+            border: 3px double var(--border-color);
+            border-radius: 15px;
+            padding: 30px;
+            background: white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        .container::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            border: 2px solid var(--accent-color);
+            border-radius: 20px;
+            pointer-events: none;
+            z-index: -1;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 2px dashed var(--primary-color);
+        }
+        h1 {
+            color: var(--primary-color);
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        .subtitle {
+            color: var(--secondary-color);
+            font-size: 1.4rem;
+            font-weight: 300;
+        }
+        h2 {
+            color: var(--accent-color);
+            border-left: 5px solid var(--secondary-color);
+            padding-left: 15px;
+            margin: 30px 0 20px;
+            font-size: 1.8rem;
+        }
+        h3 {
+            color: var(--primary-color);
+            margin: 25px 0 15px;
+            font-size: 1.4rem;
+        }
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        .content-section {
+            margin-bottom: 40px;
+            padding: 20px;
+            background-color: var(--light-color);
+            border-radius: 10px;
+            border: 1px solid #FFE082;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        }
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 12px 15px;
+            text-align: left;
+        }
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 600;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        ul, ol {
+            margin-left: 25px;
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .code-block {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            border-left: 5px solid var(--secondary-color);
+        }
+        .svg-container {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #BBDEFB;
+        }
+        .architecture {
+            width: 100%;
+            height: 300px;
+        }
+        .highlight {
+            background-color: #E3F2FD;
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 2px dashed var(--border-color);
+            color: var(--secondary-color);
+            font-size: 1.1rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        .tip-box {
+            background-color: #E8F5E9;
+            border-left: 4px solid var(--primary-color);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .comparison {
+            display: flex;
+            gap: 30px;
+            margin: 25px 0;
+        }
+        .comparison-item {
+            flex: 1;
+            padding: 20px;
+            border-radius: 10px;
+            background: white;
+            border: 2px solid #C8E6C9;
+        }
+        @media (max-width: 768px) {
+            .comparison {
+                flex-direction: column;
+            }
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>非结构化剪枝与稀疏化</h1>
+            <p class="subtitle">权重稀疏化、掩码生成与更新、稀疏矩阵存储与计算优化、稀疏训练技巧</p>
+            <p><strong>《模型量化与压缩技术实战》第11章</strong></p>
+        </header>
+
+        <section class="content-section">
+            <h2>一、核心概念</h2>
+            <p><span class="highlight">非结构化剪枝</span>是一种细粒度的模型压缩技术，它通过移除神经网络中不重要的权重（置为零），而不考虑权重在矩阵中的位置结构，从而生成高度稀疏的模型。与结构化剪枝不同，它不要求保持规整的矩阵形状，因此能获得更高的压缩率，但需要专门的硬件或软件支持来加速稀疏计算。</p>
+            
+            <div class="svg-container">
+                <svg class="architecture" viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#4CAF50;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#2196F3;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <rect x="50" y="50" width="200" height="200" fill="#FFF9C4" stroke="#FF9800" stroke-width="2" rx="10"/>
+                    <text x="150" y="80" text-anchor="middle" font-size="16" font-weight="bold" fill="#333">密集权重矩阵</text>
+                    <circle cx="100" cy="120" r="8" fill="#4CAF50"/>
+                    <circle cx="150" cy="120" r="8" fill="#4CAF50"/>
+                    <circle cx="200" cy="120" r="8" fill="#FF9800" opacity="0.5"/>
+                    <circle cx="100" cy="160" r="8" fill="#FF9800" opacity="0.5"/>
+                    <circle cx="150" cy="160" r="8" fill="#4CAF50"/>
+                    <circle cx="200" cy="160" r="8" fill="#4CAF50"/>
+                    <circle cx="100" cy="200" r="8" fill="#4CAF50"/>
+                    <circle cx="150" cy="200" r="8" fill="#FF9800" opacity="0.5"/>
+                    <circle cx="200" cy="200" r="8" fill="#4CAF50"/>
+
+                    <path d="M280 150 L330 150" stroke="#795548" stroke-width="3" marker-end="url(#arrowhead)"/>
+                    <text x="305" y="140" text-anchor="middle" font-size="14" fill="#795548">剪枝</text>
+
+                    <rect x="380" y="50" width="200" height="200" fill="#E8F5E9" stroke="#4CAF50" stroke-width="2" rx="10"/>
+                    <text x="480" y="80" text-anchor="middle" font-size="16" font-weight="bold" fill="#333">稀疏权重矩阵</text>
+                    <circle cx="430" cy="120" r="8" fill="#4CAF50"/>
+                    <circle cx="480" cy="120" r="8" fill="#4CAF50"/>
+                    <circle cx="530" cy="120" r="8" fill="#E0E0E0"/>
+                    <circle cx="430" cy="160" r="8" fill="#E0E0E0"/>
+                    <circle cx="480" cy="160" r="8" fill="#4CAF50"/>
+                    <circle cx="530" cy="160" r="8" fill="#4CAF50"/>
+                    <circle cx="430" cy="200" r="8" fill="#4CAF50"/>
+                    <circle cx="480" cy="200" r="8" fill="#E0E0E0"/>
+                    <circle cx="530" cy="200" r="8" fill="#4CAF50"/>
+
+                    <defs>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#795548"/>
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+
+            <div class="comparison">
+                <div class="comparison-item">
+                    <h3>非结构化剪枝</h3>
+                    <ul>
+                        <li><strong>粒度：</strong>权重级（细粒度）</li>
+                        <li><strong>规则：</strong>无结构约束</li>
+                        <li><strong>压缩率：</strong>高</li>
+                        <li><strong>硬件要求：</strong>需要稀疏加速支持</li>
+                        <li><strong>典型应用：</strong>通用模型压缩</li>
+                    </ul>
+                </div>
+                <div class="comparison-item">
+                    <h3>结构化剪枝</h3>
+                    <ul>
+                        <li><strong>粒度：</strong>通道/层级（粗粒度）</li>
+                        <li><strong>规则：</strong>保持规整结构</li>
+                        <li><strong>压缩率：</strong>中等</li>
+                        <li><strong>硬件要求：</strong>通用硬件即可</li>
+                        <li><strong>典型应用：</strong>移动端部署</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>二、权重稀疏化与掩码技术</h2>
+            <h3>2.1 权重重要性评估</h3>
+            <p>决定哪些权重可以被置零是关键步骤。常用的重要性准则包括：</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>准则</th>
+                        <th>计算公式/描述</th>
+                        <th>优点</th>
+                        <th>缺点</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>绝对值大小</strong></td>
+                        <td>I(w) = |w|</td>
+                        <td>简单高效，最常用</td>
+                        <td>忽略权重间的相关性</td>
+                    </tr>
+                    <tr>
+                        <td><strong>梯度信息</strong></td>
+                        <td>I(w) = |w · ∇wL|</td>
+                        <td>结合前向与反向传播</td>
+                        <td>计算开销大</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Hessian敏感度</strong></td>
+                        <td>I(w) = w² · H</td>
+                        <td>理论最优，精度损失小</td>
+                        <td>计算Hessian矩阵极其昂贵</td>
+                    </tr>
+                    <tr>
+                        <td><strong>活动度</strong></td>
+                        <td>基于激活值的统计量</td>
+                        <td>反映特征重要性</td>
+                        <td>需要推理数据</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>2.2 掩码生成与更新策略</h3>
+            <p>掩码（Mask）是一个与权重矩阵形状相同的二进制矩阵，用于指示哪些权重被保留（1）或剪枝（0）。</p>
+            <div class="code-block">
+<pre><code>import torch
+import numpy as np
+
+def generate_mask(weight, sparsity_ratio=0.5, criterion='magnitude'):
+    """
+    生成剪枝掩码
+    Args:
+        weight: 权重张量
+        sparsity_ratio: 目标稀疏率（0-1）
+        criterion: 重要性准则
+    Returns:
+        mask: 二进制掩码（1保留，0剪枝）
+    """
+    if criterion == 'magnitude':
+        # 基于绝对值大小
+        threshold = torch.quantile(torch.abs(weight).float(), sparsity_ratio)
+        mask = (torch.abs(weight) > threshold).float()
+    elif criterion == 'random':
+        # 随机剪枝（基线方法）
+        mask = torch.rand_like(weight) > sparsity_ratio
+        mask = mask.float()
+    else:
+        raise ValueError(f"Unsupported criterion: {criterion}")
+    return mask
+
+# 示例：对线性层权重进行剪枝
+linear_weight = torch.randn(128, 256) * 0.1
+mask = generate_mask(linear_weight, sparsity_ratio=0.7)
+pruned_weight = linear_weight * mask  # 应用掩码
+print(f"原始参数量: {linear_weight.numel()}")
+print(f"稀疏后参数量: {torch.sum(mask).item()}")
+print(f"实际稀疏率: {1 - torch.sum(mask).item() / mask.numel():.3f}")</code></pre>
+            </div>
+
+            <div class="tip-box">
+                <strong>掩码更新策略：</strong> 常见的更新策略包括一次性剪枝（One-shot）、迭代剪枝（Iterative）和动态剪枝（Dynamic）。迭代剪枝通常能获得更好的精度，其过程为：训练 → 剪枝最不重要的权重 → 微调 → 重复，直到达到目标稀疏率。
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>三、稀疏矩阵存储与计算优化</h2>
+            <h3>3.1 稀疏存储格式</h3>
+            <p>为了高效存储稀疏矩阵，避免存储大量零值，业界提出了多种存储格式：</p>
+            <ul>
+                <li><strong>COO（Coordinate Format）：</strong> 存储非零元素的行索引、列索引和值。适合通用操作，但存储开销相对较大。</li>
+                <li><strong>CSR（Compressed Sparse Row）：</strong> 压缩行格式，存储行指针、列索引和值。适合行操作多的场景。</li>
+                <li><strong>CSC（Compressed Sparse Column）：</strong> 压缩列格式，存储列指针、行索引和值。适合列操作多的场景。</li>
+                <li><strong>Block Sparse：</strong> 将矩阵分块，只存储非零块。能更好地利用局部性，适合GPU计算。</li>
+            </ul>
+
+            <div class="svg-container">
+                <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
+                    <text x="400" y="30" text-anchor="middle" font-size="18" font-weight="bold" fill="#2196F3">稀疏矩阵存储格式对比</text>
+                    
+                    <!-- 原始矩阵 -->
+                    <text x="100" y="70" text-anchor="middle" font-size="14" fill="#333">原始稀疏矩阵</text>
+                    <rect x="30" y="80" width="140" height="140" fill="white" stroke="#795548" stroke-width="1"/>
+                    <g font-size="12">
+                        <text x="45" y="100" fill="#4CAF50">9</text><text x="85" y="100" fill="#E0E0E0">0</text><text x="125" y="100" fill="#E0E0E0">0</text><text x="165" y="100" fill="#FF9800">3</text>
+                        <text x="45" y="130" fill="#E0E0E0">0</text><text x="85" y="130" fill="#4CAF50">5</text><text x="125" y="130" fill="#E0E0E0">0</text><text x="165" y="130" fill="#E0E0E0">0</text>
+                        <text x="45" y="160" fill="#E0E0E0">0</text><text x="85" y="160" fill="#E0E0E0">0</text><text x="125" y="160" fill="#4CAF50">1</text><text x="165" y="160" fill="#E0E0E0">0</text>
+                        <text x="45" y="190" fill="#FF9800">2</text><text x="85" y="190" fill="#E0E0E0">0</text><text x="125" y="190" fill="#E0E0E0">0</text><text x="165" y="190" fill="#4CAF50">6</text>
+                    </g>
+
+                    <!-- COO格式 -->
+                    <text x="330" y="70" text-anchor="middle" font-size="14" fill="#333">COO格式</text>
+                    <rect x="250" y="80" width="160" height="140" fill="#E3F2FD" stroke="#2196F3" stroke-width="1"/>
+                    <text x="260" y="105" font-size="12">行索引(row): [0,0,1,2,3,3]</text>
+                    <text x="260" y="130" font-size="12">列索引(col): [0,3,1,2,0,3]</text>
+                    <text x="260" y="155" font-size="12">值(data):   [9,3,5,1,2,6]</text>
+
+                    <!-- CSR格式 -->
+                    <text x="600" y="70" text-anchor="middle" font-size="14" fill="#333">CSR格式</text>
+                    <rect x="520" y="80" width="160" height="140" fill="#E8F5E9" stroke="#4CAF50" stroke-width="1"/>
+                    <text x="530" y="105" font-size="12">行指针(row_ptr): [0,2,3,4,6]</text>
+                    <text x="530" y="130" font-size="12">列索引(col_idx): [0,3,1,2,0,3]</text>
+                    <text x="530" y="155" font-size="12">值(data):      [9,3,5,1,2,6]</text>
+
+                    <!-- 图例 -->
+                    <rect x="50" y="250" width="15" height="15" fill="#4CAF50" stroke="#333"/>
+                    <text x="70" y="262" font-size="12">非零元素</text>
+                    <rect x="150" y="250" width="15" height="15" fill="#E0E0E0" stroke="#333"/>
+                    <text x="170" y="262" font-size="12">零元素</text>
+                    <rect x="250" y="250" width="15" height="15" fill="#FF9800" stroke="#333"/>
+                    <text x="270" y="262" font-size="12">特殊非零元素</text>
+                </svg>
+            </div>
+
+            <h3>3.2 稀疏计算优化</h3>
+            <p>稀疏矩阵乘法（SpMM）和卷积是神经网络中的核心操作。优化方法包括：</p>
+            <ol>
+                <li><strong>专用内核：</strong> 编写CUDA/OpenCL内核，直接操作稀疏格式数据，避免零值计算。</li>
+                <li><strong>负载均衡：</strong> 由于非零元素分布不均，需要动态调度线程以避免空闲。</li>
+                <li><strong>内存访问优化：</strong> 利用共享内存、缓存预取等技术减少内存带宽压力。</li>
+                <li><strong>库支持：</strong> 使用cuSPARSE（NVIDIA）、MKL（Intel）、Eigen等优化库。</li>
+            </ol>
+        </section>
+
+        <section class="content-section">
+            <h2>四、稀疏训练技巧</h2>
+            <p>直接在稀疏模型上进行训练（从头开始训练稀疏网络）比先训练后剪枝更具挑战性，但能获得更好的最终性能。</p>
+
+            <h3>4.1 动态稀疏训练</h3>
+            <p>在训练过程中允许权重在零与非零之间动态变化：</p>
+            <div class="code-block">
+<pre><code>class DynamicSparseTraining:
+    def __init__(self, model, sparsity=0.8, update_freq=100):
+        self.model = model
+        self.sparsity = sparsity
+        self.update_freq = update_freq
+        self.step = 0
+        self.masks = {}
+        
+    def apply_masks(self):
+        """为所有参数应用掩码"""
+        for name, param in self.model.named_parameters():
+            if 'weight' in name and param.dim() >= 2:
+                if name not in self.masks:
+                    self.masks[name] = torch.ones_like(param)
+                param.data *= self.masks[name]
+    
+    def update_masks(self):
+        """定期更新掩码：剪枝不重要的权重，激活新的权重"""
+        if self.step % self.update_freq != 0:
+            return
+            
+        for name, param in self.model.named_parameters():
+            if 'weight' in name and param.dim() >= 2:
+                # 1. 计算重要性（绝对值）
+                importance = torch.abs(param.data)
+                
+                # 2. 确定阈值
+                num_params = param.numel()
+                num_prune = int(self.sparsity * num_params)
+                if num_prune == 0:
+                    continue
+                    
+                # 3. 找到最不重要的权重进行剪枝
+                threshold = torch.kthvalue(importance.flatten(), num_prune).values
+                prune_mask = (importance <= threshold)
+                
+                # 4. 随机激活相同数量的新权重
+                num_activate = prune_mask.sum().item()
+                activate_candidates = (self.masks[name] == 0)  # 当前为零的位置
+                if activate_candidates.sum() > 0:
+                    prob = activate_candidates.float()
+                    prob = prob / prob.sum()
+                    activate_idx = torch.multinomial(prob, num_activate)
+                    new_mask = torch.zeros_like(param)
+                    new_mask.flatten()[activate_idx] = 1
+                
+                # 5. 更新掩码
+                self.masks[name] = (~prune_mask).float()
+                self.masks[name] += new_mask
+                self.masks[name] = (self.masks[name] > 0).float()
+                
+                # 6. 应用新掩码并重置新权重
+                param.data *= self.masks[name]
+                param.data += torch.randn_like(param) * 0.01 * new_mask  # 小随机初始化新权重</code></pre>
+            </div>
+
+            <h3>4.2 实用技巧与最佳实践</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>技巧</th>
+                        <th>描述</th>
+                        <th>效果</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>渐进式稀疏化</strong></td>
+                        <td>从低稀疏率开始，逐步增加至目标稀疏率</td>
+                        <td>稳定训练，精度更高</td>
+                    </tr>
+                    <tr>
+                        <td><strong>梯度重定向</strong></td>
+                        <td>将被剪枝权重的梯度加到保留权重上</td>
+                        <td>减少信息损失，加速收敛</td>
+                    </tr>
+                    <tr>
+                        <td><strong>学习率预热</strong></td>
+                        <td>在稀疏训练初期使用较低学习率</td>
+                        <td>避免梯度爆炸，稳定训练</td>
+                    </tr>
+                    <tr>
+                        <td><strong>正则化调整</strong></td>
+                        <td>减少L2正则化强度，避免过度惩罚大权重</td>
+                        <td>保持模型容量</td>
+                    </tr>
+                    <tr>
+                        <td><strong>结构化稀疏诱导</strong></td>
+                        <td>在非结构化剪枝中加入轻微的结构化约束</td>
+                        <td>平衡压缩率与硬件效率</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="tip-box">
+                <strong>重要提示：</strong> 非结构化剪枝的实际加速效果高度依赖于硬件和软件栈的支持。在支持稀疏计算的专用硬件（如NVIDIA A100的稀疏张量核心）上，最高可实现2倍的推理加速。在通用GPU上，通常需要稀疏率超过90%才能获得明显加速。
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>五、总结与展望</h2>
+            <p>非结构化剪枝与稀疏化是模型压缩领域的重要技术，能够在不显著损失精度的情况下大幅减少模型参数量和计算量。其核心流程包括：</p>
+            <ol>
+                <li><strong>权重重要性评估</strong>：选择合适的准则识别不重要的权重。</li>
+                <li><strong>掩码生成与更新</strong>：通过一次性或迭代方式生成稀疏模式。</li>
+                <li><strong>稀疏存储与计算</strong>：采用高效格式存储，并利用优化库进行计算。</li>
+                <li><strong>稀疏训练与微调</strong>：在稀疏约束下重新训练或微调模型以恢复精度。</li>
+            </ol>
+            <p>未来发展方向包括：自动化稀疏率分配、硬件感知的稀疏模式学习、动态稀疏推理、以及与其他压缩技术（如量化、知识蒸馏）的联合优化。</p>
+        </section>
+
+        <footer>
+            <p>公众号: 蓝海资料掘金营，微信 deep3321</p>
+            <p>© 2026 模型量化与压缩技术实战课程. 本章节内容仅供参考学习.</p>
+        </footer>
+    </div>
+</body>
+</html>

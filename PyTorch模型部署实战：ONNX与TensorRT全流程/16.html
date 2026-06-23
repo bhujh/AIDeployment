@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyTorch模型部署实战：自定义算子支持</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50; /* 青草绿 */
+            --secondary-color: #FF9800; /* 活力橙 */
+            --accent-color: #2196F3; /* 天空蓝 */
+            --light-color: #FFF9C4; /* 淡鹅黄 */
+            --dark-color: #333333;
+            --text-color: #2C3E50;
+            --bg-color: #F5F7FA;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            padding: 30px 20px;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            color: white;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        main {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+        }
+        section {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border-left: 6px solid var(--secondary-color);
+        }
+        h2 {
+            color: var(--primary-color);
+            border-bottom: 2px dashed var(--light-color);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+        h3 {
+            color: var(--accent-color);
+            margin: 15px 0 10px;
+        }
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        ul, ol {
+            padding-left: 25px;
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.05);
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: var(--light-color);
+            color: var(--text-color);
+            font-weight: 600;
+        }
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+        pre {
+            background: #f8f8f8;
+            border-left: 4px solid var(--accent-color);
+            padding: 15px;
+            overflow-x: auto;
+            margin: 15px 0;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+        code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #d63384;
+        }
+        .svg-container {
+            text-align: center;
+            margin: 25px 0;
+            padding: 15px;
+            background: #fdfdfd;
+            border-radius: 10px;
+            border: 1px solid #eee;
+        }
+        .architecture {
+            width: 100%;
+            height: 300px;
+        }
+        .highlight {
+            background-color: var(--light-color);
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 25px;
+            color: var(--text-color);
+            font-size: 1.1rem;
+            border-top: 2px solid var(--primary-color);
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 -5px 15px rgba(0,0,0,0.03);
+        }
+        .footer-text {
+            font-weight: bold;
+            color: var(--accent-color);
+            font-size: 1.3rem;
+            letter-spacing: 2px;
+        }
+        .note {
+            background: #e8f4fd;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 5px solid var(--accent-color);
+            margin: 20px 0;
+        }
+        .step-box {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .step {
+            flex: 1;
+            min-width: 250px;
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+            border-top: 5px solid var(--secondary-color);
+        }
+        .step h4 {
+            color: var(--secondary-color);
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>PyTorch模型部署实战</h1>
+        <p class="subtitle">第16讲：自定义算子支持 —— ONNX注册与TensorRT插件开发</p>
+        <p>解锁模型部署的终极灵活性，深入自定义算子实现全流程</p>
+    </header>
+
+    <main>
+        <section>
+            <h2>📚 课程概述</h2>
+            <p>在深度学习模型部署中，我们常常会遇到框架原生算子库不支持的特殊操作。本讲将系统讲解如何在<span class="highlight">ONNX</span>和<span class="highlight">TensorRT</span>中支持自定义算子，涵盖从概念到实现的完整路径，包括Python绑定与C++插件开发。</p>
+            <div class="svg-container">
+                <svg class="architecture" viewBox="0 0 800 300">
+                    <rect x="50" y="50" width="150" height="60" rx="10" fill="#4CAF50" opacity="0.8"/>
+                    <text x="125" y="85" text-anchor="middle" fill="white" font-weight="bold">PyTorch模型</text>
+                    <path d="M200 80 L250 80" stroke="#FF9800" stroke-width="3"/>
+                    <rect x="250" y="50" width="150" height="60" rx="10" fill="#2196F3" opacity="0.8"/>
+                    <text x="325" y="85" text-anchor="middle" fill="white" font-weight="bold">ONNX导出</text>
+                    <path d="M400 80 L450 80" stroke="#FF9800" stroke-width="3"/>
+                    <rect x="450" y="50" width="150" height="60" rx="10" fill="#9C27B0" opacity="0.8"/>
+                    <text x="525" y="85" text-anchor="middle" fill="white" font-weight="bold">TensorRT引擎</text>
+                    <rect x="300" y="150" width="200" height="80" rx="10" fill="#FF9800" opacity="0.9"/>
+                    <text x="400" y="190" text-anchor="middle" fill="white" font-weight="bold" font-size="18">自定义算子插件</text>
+                    <text x="400" y="210" text-anchor="middle" fill="white" font-size="14">(桥梁与扩展)</text>
+                    <path d="M400 130 L400 150" stroke="#333" stroke-width="2" stroke-dasharray="5,5"/>
+                    <path d="M100 200 L700 200" stroke="#333" stroke-width="1"/>
+                    <text x="100" y="240" text-anchor="start" fill="#2C3E50" font-size="14">PyTorch自定义层</text>
+                    <text x="300" y="240" text-anchor="start" fill="#2C3E50" font-size="14">ONNX自定义算子</text>
+                    <text x="550" y="240" text-anchor="start" fill="#2C3E50" font-size="14">TensorRT插件</text>
+                    <path d="M180 220 L180 200" stroke="#4CAF50" stroke-width="2"/>
+                    <path d="M380 220 L380 200" stroke="#2196F3" stroke-width="2"/>
+                    <path d="M630 220 L630 200" stroke="#9C27B0" stroke-width="2"/>
+                </svg>
+                <p><em>自定义算子在模型部署流水线中的桥梁作用</em></p>
+            </div>
+        </section>
+
+        <section>
+            <h2>🔧 第一部分：ONNX中的自定义算子</h2>
+            <p>ONNX（Open Neural Network Exchange）作为模型交换格式，提供了扩展机制以支持非标准算子。</p>
+            <h3>1.1 注册自定义算子</h3>
+            <p>在ONNX中注册自定义算子需要定义算子的输入/输出、数据类型和形状推断函数。</p>
+            <div class="step-box">
+                <div class="step">
+                    <h4>步骤一：定义算子原型</h4>
+                    <p>使用<code>onnx.helper.make_node</code>创建节点，并指定<code>op_type</code>为自定义名称。</p>
+                </div>
+                <div class="step">
+                    <h4>步骤二：实现形状推断</h4>
+                    <p>继承<code>onnx.shape_inference</code>并实现<code>infer_shapes</code>函数。</p>
+                </div>
+                <div class="step">
+                    <h4>步骤三：注册到ONNX运行时</h4>
+                    <p>使用<code>onnxruntime.capi.onnxruntime_pybind11_state.register_custom_ops_library</code>加载。</p>
+                </div>
+            </div>
+            <h3>1.2 Python示例代码</h3>
+            <pre><code>import onnx
+from onnx import helper, shape_inference
+
+# 1. 创建自定义算子节点
+custom_node = helper.make_node(
+    'MyCustomOp',  # 算子类型名
+    inputs=['input1', 'input2'],
+    outputs=['output'],
+    domain='com.mycompany',  # 自定义域名
+    alpha=0.5  # 自定义属性
+)
+
+# 2. 创建图并添加节点
+graph = helper.make_graph(
+    [custom_node],
+    "custom_graph",
+    [helper.make_tensor_value_info('input1', onnx.TensorProto.FLOAT, [1,3,224,224]),
+     helper.make_tensor_value_info('input2', onnx.TensorProto.FLOAT, [1,3,224,224])],
+    [helper.make_tensor_value_info('output', onnx.TensorProto.FLOAT, [1,3,224,224])]
+)
+
+# 3. 创建模型
+model = helper.make_model(graph, producer_name='my-model')
+model.opset_import.extend([helper.make_opsetid('com.mycompany', 1)])
+
+# 4. 保存模型
+onnx.save(model, 'custom_model.onnx')
+print("自定义算子ONNX模型已保存！")</code></pre>
+        </section>
+
+        <section>
+            <h2>⚙️ 第二部分：TensorRT插件开发</h2>
+            <p>TensorRT插件（Plugin）是扩展TensorRT功能的核心机制，允许实现不支持的层或自定义优化。</p>
+            <h3>2.1 插件开发关键组件</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>组件</th>
+                        <th>作用</th>
+                        <th>必须实现的方法</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>IPluginV2DynamicExt</strong></td>
+                        <td>插件基类（动态形状支持）</td>
+                        <td>configurePlugin, enqueue, getOutputDimensions</td>
+                    </tr>
+                    <tr>
+                        <td><strong>IPluginCreator</strong></td>
+                        <td>插件创建器工厂</td>
+                        <td>createPlugin, deserializePlugin</td>
+                    </tr>
+                    <tr>
+                        <td><strong>PluginFieldCollection</strong></td>
+                        <td>插件参数传递</td>
+                        <td>通过PluginField定义参数</td>
+                    </tr>
+                </tbody>
+            </table>
+            <h3>2.2 开发流程</h3>
+            <ol>
+                <li><strong>继承IPluginV2DynamicExt</strong>：实现核心计算逻辑和序列化。</li>
+                <li><strong>实现IPluginCreator</strong>：提供插件的创建和反序列化。</li>
+                <li><strong>注册插件</strong>：使用<code>REGISTER_TENSORRT_PLUGIN</code>宏注册到TensorRT。</li>
+                <li><strong>编译为共享库</strong>：生成<code>.so</code>（Linux）或<code>.dll</code>（Windows）文件。</li>
+                <li><strong>在推理中加载</strong>：使用<code>initLibNvInferPlugins</code>或显式加载。</li>
+            </ol>
+            <div class="note">
+                <p><strong>注意：</strong>TensorRT插件需要严格处理内存管理和线程安全，建议使用CUDA流进行异步计算。</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>💻 第三部分：C++与Python插件实现</h2>
+            <p>提供跨语言支持，使自定义算子既能用于高性能C++推理，也能在Python中灵活调用。</p>
+            <h3>3.1 C++ TensorRT插件核心代码片段</h3>
+            <pre><code>#include "NvInferPlugin.h"
+#include &lt;cuda_runtime.h&gt;
+
+class MyCustomPlugin : public nvinfer1::IPluginV2DynamicExt {
+public:
+    MyCustomPlugin(float alpha) : mAlpha(alpha) {}
+
+    // 核心计算函数
+    int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
+                const nvinfer1::PluginTensorDesc* outputDesc,
+                const void* const* inputs, void* const* outputs,
+                void* workspace, cudaStream_t stream) override {
+        int count = 1;
+        for (int i = 0; i < inputDesc[0].dims.nbDims; ++i) {
+            count *= inputDesc[0].dims.d[i];
+        }
+        // 调用CUDA核函数（假设已实现）
+        my_custom_kernel&lt;&lt;&lt;(count+255)/256, 256, 0, stream&gt;&gt;&gt;(
+            (const float*)inputs[0], (float*)outputs[0], mAlpha, count);
+        return 0;
+    }
+
+    // 序列化/反序列化
+    size_t getSerializationSize() const override { return sizeof(float); }
+    void serialize(void* buffer) const override { *(float*)buffer = mAlpha; }
+
+    // 动态形状支持
+    nvinfer1::DimsExprs getOutputDimensions(int outputIndex,
+        const nvinfer1::DimsExprs* inputs, int nbInputs,
+        nvinfer1::IExprBuilder& exprBuilder) override {
+        return inputs[0]; // 输出形状与输入0相同
+    }
+
+private:
+    float mAlpha;
+};
+
+// 插件创建器
+class MyCustomPluginCreator : public nvinfer1::IPluginCreator {
+    // 实现createPlugin, deserializePlugin等方法
+};
+
+REGISTER_TENSORRT_PLUGIN(MyCustomPluginCreator);</code></pre>
+            <h3>3.2 Python绑定与调用</h3>
+            <p>使用PyBind11将C++插件暴露给Python，实现无缝集成。</p>
+            <pre><code>// PyBind11绑定示例（简化）
+#include &lt;pybind11/pybind11.h&gt;
+#include "MyCustomPlugin.h"
+
+PYBIND11_MODULE(my_plugin, m) {
+    m.doc() = "TensorRT自定义插件Python绑定";
+    
+    pybind11::class_&lt;MyCustomPlugin&gt;(m, "MyCustomPlugin")
+        .def(pybind11::init&lt;float&gt;())
+        .def("enqueue", &MyCustomPlugin::enqueue);
+        
+    pybind11::class_&lt;MyCustomPluginCreator&gt;(m, "MyCustomPluginCreator")
+        .def(pybind11::init&lt;&gt;())
+        .def("create_plugin", &MyCustomPluginCreator::createPlugin);
+}
+
+# Python调用示例
+import tensorrt as trt
+import my_plugin  # 自定义插件模块
+
+# 加载插件库
+trt.init_libnvinfer_plugins(None, "")
+
+# 构建引擎时使用自定义插件
+builder = trt.Builder(logger)
+network = builder.create_network(1 &lt;&lt; int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH))
+plugin_creator = my_plugin.MyCustomPluginCreator()
+custom_layer = network.add_plugin_v2([input_tensor], plugin_creator.create_plugin("my_custom", {"alpha": 0.5}))</code></pre>
+        </section>
+
+        <section>
+            <h2>📊 技术对比与选择指南</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>方案</th>
+                        <th>优点</th>
+                        <th>缺点</th>
+                        <th>适用场景</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>ONNX自定义算子</strong></td>
+                        <td>框架无关、易于移植、支持多后端</td>
+                        <td>需要各推理引擎单独实现、性能可能非最优</td>
+                        <td>多平台部署、研究原型、算子标准化过程</td>
+                    </tr>
+                    <tr>
+                        <td><strong>TensorRT C++插件</strong></td>
+                        <td>极致性能、完全控制内存与计算、支持动态形状</td>
+                        <td>开发复杂、需CUDA知识、调试困难</td>
+                        <td>生产环境、高性能要求、复杂自定义操作</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Python插件绑定</strong></td>
+                        <td>开发快速、易于调试、Python生态集成</td>
+                        <td>性能开销、GIL限制、部署依赖多</td>
+                        <td>算法验证、快速原型、研究实验</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="note">
+                <p><strong>建议：</strong>对于生产部署，优先考虑TensorRT C++插件；对于快速验证和跨平台需求，可使用ONNX自定义算子；Python绑定适合算法开发阶段。</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>🎯 实战总结与最佳实践</h2>
+            <ul>
+                <li><strong>提前规划：</strong>在模型设计阶段就考虑部署需求，尽量避免冷门算子。</li>
+                <li><strong>测试驱动：</strong>为自定义算子编写单元测试，覆盖数值正确性、边界条件和性能。</li>
+                <li><strong>版本管理：</strong>为插件和自定义算子维护版本号，确保与模型版本兼容。</li>
+                <li><strong>性能剖析：</strong>使用Nsight Systems/Compute分析插件性能，优化内存访问和核函数。</li>
+                <li><strong>文档齐全：</strong>记录算子的数学定义、参数含义和使用示例。</li>
+                <li><strong>回退方案：</strong>为自定义算子准备纯Python或参考实现，用于调试和验证。</li>
+            </ul>
+            <p>掌握自定义算子支持技术，你将能够突破框架限制，部署任意复杂的模型，真正实现"模型即代码"的灵活部署。</p>
+        </section>
+    </main>
+
+    <footer>
+        <p>深度学习部署实战系列课程</p>
+        <p class="footer-text">蓝海资料掘金营</p>
+        <p>探索技术深海，挖掘知识黄金</p>
+    </footer>
+</body>
+</html>

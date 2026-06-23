@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyTorch模型部署实战：生成模型部署考量</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50; /* 青草绿 */
+            --secondary-color: #FF9800; /* 活力橙 */
+            --accent-color: #2196F3; /* 天空蓝 */
+            --light-color: #FFF9C4; /* 淡鹅黄 */
+            --dark-color: #333333;
+            --text-color: #2c3e50;
+            --bg-color: #F5F7FA;
+            --card-bg: #FFFFFF;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            color: white;
+            border-radius: 20px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .subtitle {
+            font-size: 1.3rem;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        main {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+        }
+        section {
+            background-color: var(--card-bg);
+            border-radius: 18px;
+            padding: 30px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.05);
+            border-left: 8px solid var(--secondary-color);
+            transition: transform 0.3s ease;
+        }
+        section:hover {
+            transform: translateY(-5px);
+        }
+        h2 {
+            color: var(--primary-color);
+            border-bottom: 3px solid var(--light-color);
+            padding-bottom: 12px;
+            margin-bottom: 25px;
+            font-size: 1.8rem;
+        }
+        h3 {
+            color: var(--accent-color);
+            margin: 20px 0 15px;
+        }
+        p {
+            margin-bottom: 18px;
+            text-align: justify;
+        }
+        ul, ol {
+            padding-left: 25px;
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        th, td {
+            padding: 16px 20px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        th {
+            background-color: var(--light-color);
+            color: var(--dark-color);
+            font-weight: 600;
+        }
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+        .code-block {
+            background-color: #f5f5f5;
+            border-left: 5px solid var(--accent-color);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 25px 0;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        .svg-container {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+        }
+        .architecture-svg {
+            width: 100%;
+            max-width: 900px;
+            height: auto;
+        }
+        .highlight {
+            background-color: var(--light-color);
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-weight: bold;
+            color: var(--dark-color);
+        }
+        .note {
+            background-color: #E8F5E9;
+            border-left: 5px solid var(--primary-color);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 25px 0;
+        }
+        footer {
+            text-align: center;
+            margin-top: 60px;
+            padding: 30px;
+            color: var(--dark-color);
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-top: 3px dashed var(--secondary-color);
+        }
+        @media (max-width: 768px) {
+            body {
+                padding: 15px;
+            }
+            h1 {
+                font-size: 2.2rem;
+            }
+            section {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>PyTorch模型部署实战</h1>
+        <p class="subtitle">第24讲：生成模型部署实战——GAN/Stable Diffusion部分组件部署考量</p>
+    </header>
+
+    <main>
+        <section>
+            <h2>生成模型部署概述</h2>
+            <p>生成式对抗网络（GAN）和扩散模型（如Stable Diffusion）已成为图像生成领域的核心技术。与分类、检测模型不同，生成模型的部署面临<strong>计算图动态性高、模型体积庞大、推理延迟敏感</strong>等独特挑战。本章节将深入探讨将GAN及Stable Diffusion关键组件（如VAE、U-Net、CLIP）转换为ONNX格式，并利用TensorRT进行高性能推理的完整流程与核心考量。</p>
+            <div class="svg-container">
+                <svg class="architecture-svg" viewBox="0 0 900 300" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="50" y="100" width="150" height="80" rx="10" fill="#4CAF50" opacity="0.8"/>
+                    <text x="125" y="145" text-anchor="middle" fill="white" font-weight="bold">PyTorch训练模型</text>
+                    <path d="M220 140 L280 140" stroke="#FF9800" stroke-width="3" marker-end="url(#arrow)"/>
+                    <rect x="280" y="100" width="150" height="80" rx="10" fill="#2196F3" opacity="0.8"/>
+                    <text x="355" y="145" text-anchor="middle" fill="white" font-weight="bold">ONNX导出与优化</text>
+                    <path d="M450 140 L510 140" stroke="#FF9800" stroke-width="3" marker-end="url(#arrow)"/>
+                    <rect x="510" y="100" width="150" height="80" rx="10" fill="#FF9800" opacity="0.8"/>
+                    <text x="585" y="145" text-anchor="middle" fill="white" font-weight="bold">TensorRT引擎构建</text>
+                    <path d="M680 140 L740 140" stroke="#FF9800" stroke-width="3" marker-end="url(#arrow)"/>
+                    <rect x="740" y="100" width="150" height="80" rx="10" fill="#9C27B0" opacity="0.8"/>
+                    <text x="815" y="145" text-anchor="middle" fill="white" font-weight="bold">高性能推理部署</text>
+                    <defs>
+                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" fill="#FF9800"/>
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+        </section>
+
+        <section>
+            <h2>核心组件部署考量</h2>
+            <h3>1. GAN生成器部署</h3>
+            <ul>
+                <li><span class="highlight">动态控制流</span>：GAN中的条件输入（如类别标签、风格向量）需通过<code>torch.jit.script</code>或<code>torch.onnx.export</code>的<code>dynamic_axes</code>参数处理。</li>
+                <li><span class="highlight">归一化层融合</span>：将InstanceNorm/BatchNorm与卷积层融合，减少算子数量，提升推理速度。</li>
+                <li><span class="highlight">输出后处理</span>：生成器输出通常为[-1,1]或[0,1]的Tensor，需在部署管线中集成缩放、量化（如uint8转换）操作。</li>
+            </ul>
+            <div class="code-block">
+<pre># GAN生成器ONNX导出示例
+import torch
+import torch.onnx
+
+generator = Generator().eval()
+dummy_input = torch.randn(1, 100, 1, 1) # 噪声输入
+condition = torch.randint(0, 10, (1,)) # 条件标签
+
+# 动态轴设置：支持批量大小变化
+dynamic_axes = {
+    'noise': {0: 'batch_size'},
+    'condition': {0: 'batch_size'},
+    'output': {0: 'batch_size'}
+}
+
+torch.onnx.export(
+    generator,
+    (dummy_input, condition),
+    "gan_generator.onnx",
+    input_names=['noise', 'condition'],
+    output_names=['output'],
+    dynamic_axes=dynamic_axes,
+    opset_version=14
+)</pre>
+            </div>
+
+            <h3>2. Stable Diffusion组件部署</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>组件</th>
+                        <th>功能</th>
+                        <th>部署关键点</th>
+                        <th>建议精度</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>VAE编码器/解码器</strong></td>
+                        <td>图像与潜空间相互转换</td>
+                        <td>控制内存占用，使用FP16，注意数值范围</td>
+                        <td>FP16 / INT8量化</td>
+                    </tr>
+                    <tr>
+                        <td><strong>U-Net噪声预测器</strong></td>
+                        <td>迭代去噪，核心计算模块</td>
+                        <td>动态时间步、注意力机制优化、算子融合</td>
+                        <td>FP16（首选）</td>
+                    </tr>
+                    <tr>
+                        <td><strong>CLIP文本编码器</strong></td>
+                        <td>文本提示词嵌入</td>
+                        <td>变长文本处理，导出为固定长度</td>
+                        <td>FP16</td>
+                    </tr>
+                    <tr>
+                        <td><strong>调度器（Scheduler）</strong></td>
+                        <td>控制去噪过程</td>
+                        <td>通常在CPU实现，逻辑与模型分离</td>
+                        <td>FP32（CPU）</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section>
+            <h2>ONNX导出挑战与解决方案</h2>
+            <ol>
+                <li><strong>动态形状支持</strong>：扩散模型推理步数可变，需使用<code>dynamic_axes</code>指定可变维度（如批大小、序列长度、时间步）。</li>
+                <li><strong>自定义算子</strong>：如GroupNorm的特定实现，需注册自定义符号或分解为ONNX标准算子。</li>
+                <li><strong>大模型导出</strong>：模型参数量大（>2GB），需使用ONNX外部数据存储（<code>external_data</code>参数）。</li>
+                <li><strong>注意力机制优化</strong>：将多头注意力中的重复计算合并，利用ONNX Runtime或TensorRT的插件优化。</li>
+            </ol>
+            <div class="note">
+                <strong>最佳实践提示：</strong> 导出前务必使用<code>onnx.checker.check_model</code>验证模型结构正确性，并使用<code>onnxruntime</code>进行前向推理比对，确保数值精度在可接受范围内（如FP16的误差容限）。
+            </div>
+        </section>
+
+        <section>
+            <h2>TensorRT优化策略</h2>
+            <h3>精度选择</h3>
+            <ul>
+                <li><span class="highlight">FP32</span>：基准精度，确保最高输出质量，适用于所有组件。</li>
+                <li><span class="highlight">FP16</span>：<strong>推荐精度</strong>，速度提升显著，绝大多数生成任务质量无损。需注意激活值溢出。</li>
+                <li><span class="highlight">INT8</span>：最大速度提升，但需要校准数据集，可能对生成质量有细微影响，建议先用于VAE等对噪声不敏感组件。</li>
+            </ul>
+            <h3>性能优化技巧</h3>
+            <ul>
+                <li><strong>层融合（Layer Fusion）</strong>：自动将Conv+BN+Activation序列融合为单一算子。</li>
+                <li><strong>内核自动调优（Kernel Auto-Tuning）</strong>：TensorRT根据目标GPU选择最优内核实现。</li>
+                <li><strong>显存优化</strong>：通过<code>IBuilderConfig</code>设置最大工作空间，并复用中间张量内存。</li>
+                <li><strong>流式处理</strong>：使用CUDA流并行处理多个生成请求，提高吞吐量。</li>
+            </ul>
+            <div class="code-block">
+<pre># TensorRT引擎构建核心配置示例
+import tensorrt as trt
+
+logger = trt.Logger(trt.Logger.WARNING)
+builder = trt.Builder(logger)
+network = builder.create_network(1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH))
+parser = trt.OnnxParser(network, logger)
+
+# 解析ONNX模型
+with open("unet.onnx", "rb") as f:
+    parser.parse(f.read())
+
+config = builder.create_builder_config()
+config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, 1 << 30) # 1GB工作空间
+config.set_flag(trt.BuilderFlag.FP16) # 启用FP16精度
+
+# 动态形状配置
+profile = builder.create_optimization_profile()
+profile.set_shape("input", min=(1,4,64,64), opt=(2,4,64,64), max=(4,4,64,64))
+config.add_optimization_profile(profile)
+
+engine = builder.build_serialized_network(network, config)
+with open("unet.engine", "wb") as f:
+    f.write(engine)</pre>
+            </div>
+        </section>
+
+        <section>
+            <h2>部署管线架构建议</h2>
+            <div class="svg-container">
+                <svg class="architecture-svg" viewBox="0 0 900 400" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="100" y="50" width="200" height="60" rx="8" fill="#4CAF50" opacity="0.7"/>
+                    <text x="200" y="85" text-anchor="middle" fill="white" font-weight="bold">文本输入</text>
+                    <path d="M200 110 L200 150" stroke="#2196F3" stroke-width="2" marker-end="url(#arrow2)"/>
+                    <rect x="50" y="150" width="300" height="60" rx="8" fill="#2196F3" opacity="0.7"/>
+                    <text x="200" y="185" text-anchor="middle" fill="white" font-weight="bold">CLIP文本编码器 (TensorRT)</text>
+                    <path d="M200 210 L200 250" stroke="#2196F3" stroke-width="2" marker-end="url(#arrow2)"/>
+                    <rect x="100" y="250" width="200" height="60" rx="8" fill="#FF9800" opacity="0.7"/>
+                    <text x="200" y="285" text-anchor="middle" fill="white" font-weight="bold">调度器 (CPU)</text>
+                    <path d="M200 310 L200 350" stroke="#2196F3" stroke-width="2" marker-end="url(#arrow2)"/>
+                    <rect x="550" y="150" width="300" height="180" rx="8" fill="#9C27B0" opacity="0.7"/>
+                    <text x="700" y="240" text-anchor="middle" fill="white" font-weight="bold">U-Net迭代去噪 (TensorRT FP16)</text>
+                    <path d="M400 285 L550 240" stroke="#2196F3" stroke-width="2" marker-end="url(#arrow2)"/>
+                    <path d="M700 330 L700 380" stroke="#2196F3" stroke-width="2" marker-end="url(#arrow2)"/>
+                    <rect x="600" y="380" width="200" height="60" rx="8" fill="#4CAF50" opacity="0.7"/>
+                    <text x="700" y="415" text-anchor="middle" fill="white" font-weight="bold">VAE解码器 (TensorRT INT8)</text>
+                    <path d="M700 440 L700 480" stroke="#2196F3" stroke-width="2" marker-end="url(#arrow2)"/>
+                    <rect x="600" y="480" width="200" height="60" rx="8" fill="#2196F3" opacity="0.7"/>
+                    <text x="700" y="515" text-anchor="middle" fill="white" font-weight="bold">图像输出</text>
+                    <defs>
+                        <marker id="arrow2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                            <path d="M0,0 L0,8 L7,4 z" fill="#2196F3"/>
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+            <p><strong>管线设计原则：</strong></p>
+            <ul>
+                <li><strong>异步流水线</strong>：将文本编码、多步去噪、图像解码等阶段重叠执行，最大化GPU利用率。</li>
+                <li><strong>混合精度管线</strong>：根据组件敏感性分配精度，如U-Net使用FP16，VAE解码器尝试INT8。</li>
+                <li><strong>内存生命周期管理</strong>：显式管理各阶段中间张量的创建与释放，避免峰值显存过高。</li>
+                <li><strong>错误恢复与日志</strong>：部署服务需具备引擎重载、请求超时处理等健壮性机制。</li>
+            </ul>
+        </section>
+    </main>
+
+    <footer>
+        蓝海资料掘金营
+    </footer>
+</body>
+</html>

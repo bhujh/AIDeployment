@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyTorch模型部署实战：边缘设备部署 - Jetson平台</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50; /* 青草绿 */
+            --secondary-color: #FF9800; /* 活力橙 */
+            --accent-color: #2196F3; /* 天空蓝 */
+            --light-color: #FFF9C4; /* 淡鹅黄 */
+            --dark-color: #333333;
+            --text-color: #2c3e50;
+            --bg-color: #f8f9fa;
+            --card-bg: #ffffff;
+            --shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding-bottom: 60px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            color: white;
+            padding: 3rem 2rem;
+            border-radius: 0 0 20px 20px;
+            text-align: center;
+            margin-bottom: 2.5rem;
+            box-shadow: var(--shadow);
+        }
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        section {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow);
+            border-left: 6px solid var(--secondary-color);
+        }
+        h2 {
+            color: var(--primary-color);
+            border-bottom: 2px dashed var(--light-color);
+            padding-bottom: 0.7rem;
+            margin-bottom: 1.5rem;
+            font-size: 1.8rem;
+        }
+        h3 {
+            color: var(--accent-color);
+            margin: 1.2rem 0 0.8rem;
+        }
+        p {
+            margin-bottom: 1rem;
+        }
+        ul, ol {
+            padding-left: 1.8rem;
+            margin-bottom: 1.2rem;
+        }
+        li {
+            margin-bottom: 0.5rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+        }
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background-color: var(--light-color);
+            color: var(--dark-color);
+            font-weight: 600;
+        }
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+        .code-block {
+            background: #2d3a4b;
+            color: #e6e6e6;
+            padding: 1.5rem;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            font-family: 'Courier New', monospace;
+            border-left: 4px solid var(--secondary-color);
+        }
+        .svg-container {
+            text-align: center;
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: #fefefe;
+            border-radius: 12px;
+            border: 1px solid #eaeaea;
+        }
+        .svg-container svg {
+            max-width: 100%;
+            height: auto;
+        }
+        .highlight {
+            background-color: var(--light-color);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        .tip-box {
+            background: #e8f4fd;
+            border-left: 5px solid var(--accent-color);
+            padding: 1.2rem;
+            border-radius: 0 8px 8px 0;
+            margin: 1.5rem 0;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        .card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            border-top: 5px solid var(--primary-color);
+        }
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding: 2rem;
+            color: #666;
+            font-size: 1.1rem;
+            border-top: 1px solid #ddd;
+        }
+        @media (max-width: 768px) {
+            h1 { font-size: 2.2rem; }
+            section { padding: 1.5rem; }
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>PyTorch模型部署实战：边缘设备部署</h1>
+        <p class="subtitle">第27讲：Jetson平台部署、TensorRT加速、功耗与性能平衡</p>
+    </header>
+
+    <div class="container">
+        <section>
+            <h2>课程概述</h2>
+            <p>本讲聚焦于将深度学习模型部署到NVIDIA Jetson系列边缘计算平台。我们将深入探讨如何利用TensorRT实现模型极致加速，并在严格的功耗约束下寻求性能与能效的最佳平衡。这是实现真正“边缘智能”的关键一步。</p>
+            <div class="tip-box">
+                <strong>学习目标：</strong> 掌握Jetson平台环境配置、ONNX模型转换、TensorRT优化、性能分析与功耗调优的全流程实战技能。
+            </div>
+        </section>
+
+        <section>
+            <h2>一、Jetson平台简介与选型</h2>
+            <p>NVIDIA Jetson是面向边缘AI的嵌入式系统模组（SOM），集成了GPU、CPU、内存和电源管理，提供完整的AI计算栈。</p>
+            <div class="grid">
+                <div class="card">
+                    <h3>Jetson Nano</h3>
+                    <p><strong>定位：</strong>入门级AI开发套件</p>
+                    <p><strong>算力：</strong>472 GFLOPS (FP16)</p>
+                    <p><strong>功耗：</strong>5-10W</p>
+                    <p><strong>适用场景：</strong>教育、原型验证、轻量级推理</p>
+                </div>
+                <div class="card">
+                    <h3>Jetson Xavier NX</h3>
+                    <p><strong>定位：</strong>高性能边缘计算</p>
+                    <p><strong>算力：</strong>21 TOPS (INT8)</p>
+                    <p><strong>功耗：</strong>10-20W</p>
+                    <p><strong>适用场景：</strong>机器人、智能摄像头、无人机</p>
+                </div>
+                <div class="card">
+                    <h3>Jetson AGX Orin</h3>
+                    <p><strong>定位：</strong>顶级边缘服务器</p>
+                    <p><strong>算力：</strong>275 TOPS (INT8)</p>
+                    <p><strong>功耗：</strong>15-60W</p>
+                    <p><strong>适用场景：</strong>自动驾驶、高级机器人、边缘服务器</p>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>二、部署流程总览</h2>
+            <div class="svg-container">
+                <svg viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="50" y="120" width="120" height="60" rx="10" fill="#4CAF50" opacity="0.8"/>
+                    <text x="110" y="155" text-anchor="middle" fill="white" font-weight="bold">PyTorch模型</text>
+                    <path d="M170 150 L230 150" stroke="#FF9800" stroke-width="3" marker-end="url(#arrow)"/>
+                    <rect x="230" y="120" width="120" height="60" rx="10" fill="#2196F3" opacity="0.8"/>
+                    <text x="290" y="155" text-anchor="middle" fill="white" font-weight="bold">ONNX导出</text>
+                    <path d="M350 150 L410 150" stroke="#FF9800" stroke-width="3" marker-end="url(#arrow)"/>
+                    <rect x="410" y="120" width="120" height="60" rx="10" fill="#9C27B0" opacity="0.8"/>
+                    <text x="470" y="155" text-anchor="middle" fill="white" font-weight="bold">TensorRT优化</text>
+                    <path d="M530 150 L590 150" stroke="#FF9800" stroke-width="3" marker-end="url(#arrow)"/>
+                    <rect x="590" y="120" width="120" height="60" rx="10" fill="#FF9800" opacity="0.8"/>
+                    <text x="650" y="155" text-anchor="middle" fill="white" font-weight="bold">Jetson部署</text>
+                    <defs>
+                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" fill="#FF9800"/>
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+            <ol>
+                <li><span class="highlight">环境准备：</span>刷写JetPack SDK，安装CUDA、cuDNN、TensorRT、OpenCV等依赖。</li>
+                <li><span class="highlight">模型转换：</span>将训练好的PyTorch模型导出为ONNX格式，确保算子兼容性。</li>
+                <li><span class="highlight">TensorRT优化：</span>使用trtexec或Python API进行精度校准、层融合、内核自动调优。</li>
+                <li><span class="highlight">推理程序开发：</span>编写C++/Python程序加载TensorRT引擎，处理输入输出。</li>
+                <li><span class="highlight">性能调优：</span>分析瓶颈，调整批处理大小、工作空间、功耗模式等参数。</li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>三、TensorRT加速关键技术</h2>
+            <h3>3.1 精度校准（INT8量化）</h3>
+            <p>通过校准数据集统计激活值分布，将FP32模型转换为INT8，在精度损失可控的情况下获得显著加速。</p>
+            <div class="code-block">
+<pre>
+# Python示例：INT8校准器创建
+import tensorrt as trt
+
+class Calibrator(trt.IInt8EntropyCalibrator2):
+    def __init__(self, data_dir, batch_size=32):
+        super().__init__()
+        self.batch_size = batch_size
+        self.data = load_calibration_data(data_dir)
+        self.device_input = cuda.mem_alloc(self.batch_size * 3 * 224 * 224 * 4)
+
+    def get_batch_size(self):
+        return self.batch_size
+
+    def get_batch(self, names):
+        # 从数据集中加载一个批次数据并复制到设备内存
+        batch = self.data.next_batch()
+        cuda.memcpy_htod(self.device_input, batch)
+        return [int(self.device_input)]
+</pre>
+            </div>
+
+            <h3>3.2 层融合与内核自动调优</h3>
+            <p>TensorRT自动将卷积、批归一化、激活函数融合为单个层，并针对目标平台选择最优内核实现。</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>优化技术</th>
+                        <th>描述</th>
+                        <th>性能提升</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>层融合 (Layer Fusion)</td>
+                        <td>Conv + BN + ReLU → 单一内核</td>
+                        <td>~15-25%</td>
+                    </tr>
+                    <tr>
+                        <td>精度校准 (INT8)</td>
+                        <td>FP32 → INT8 量化推理</td>
+                        <td>~2-4倍</td>
+                    </tr>
+                    <tr>
+                        <td>内核自动调优 (Auto-Tuning)</td>
+                        <td>针对特定硬件选择最优算法</td>
+                        <td>~10-30%</td>
+                    </tr>
+                    <tr>
+                        <td>动态张量内存 (Dynamic Tensor Memory)</td>
+                        <td>重用中间张量内存</td>
+                        <td>减少内存占用</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section>
+            <h2>四、功耗与性能平衡策略</h2>
+            <p>边缘设备部署的核心挑战之一是在有限的功耗预算下最大化性能。</p>
+            <div class="svg-container">
+                <svg viewBox="0 0 700 250" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="100" y="50" width="500" height="30" fill="#e0e0e0" rx="5"/>
+                    <rect x="100" y="50" width="300" height="30" fill="#4CAF50" rx="5"/>
+                    <text x="350" y="70" text-anchor="middle" fill="black" font-size="14">功耗预算 (Power Budget)</text>
+                    <circle cx="200" y="150" r="40" fill="#2196F3" opacity="0.7"/>
+                    <text x="200" y="155" text-anchor="middle" fill="white" font-weight="bold">性能</text>
+                    <circle cx="350" y="150" r="40" fill="#FF9800" opacity="0.7"/>
+                    <text x="350" y="155" text-anchor="middle" fill="white" font-weight="bold">精度</text>
+                    <circle cx="500" y="150" r="40" fill="#9C27B0" opacity="0.7"/>
+                    <text x="500" y="155" text-anchor="middle" fill="white" font-weight="bold">延迟</text>
+                    <text x="350" y="220" text-anchor="middle" fill="#666" font-size="16">平衡三角：调整任一参数都会影响其他两者</text>
+                </svg>
+            </div>
+            <h3>4.1 Jetson功耗模式配置</h3>
+            <div class="code-block">
+<pre>
+# 查看当前功耗模式
+sudo jetson_clocks --show
+
+# 设置最大性能模式（功耗最高）
+sudo nvpmodel -m 0
+sudo jetson_clocks
+
+# 设置高效率模式（平衡功耗与性能）
+sudo nvpmodel -m 1
+
+# 监控实时功耗
+sudo tegrastats
+# 输出示例：POM_5V_IN 1000/1000 POM_5V_GPU 300/300 POM_5V_CPU 200/200
+</pre>
+            </div>
+
+            <h3>4.2 性能-功耗调优建议</h3>
+            <ul>
+                <li><strong>批处理大小：</strong>增大批处理可以提高GPU利用率，但会增加延迟和内存占用。找到最佳平衡点。</li>
+                <li><strong>频率锁定：</strong>使用<code>jetson_clocks</code>锁定CPU/GPU频率以避免动态调频带来的延迟波动。</li>
+                <li><strong>内存优化：</strong>使用TensorRT的<code>IExecutionContext</code>内存复用，减少动态分配。</li>
+                <li><strong>流水线并行：</strong>将数据预处理、推理、后处理分配到不同线程，最大化硬件利用率。</li>
+                <li><strong>模型剪枝与量化：</strong>在训练后对模型进行剪枝和INT8量化，直接减少计算量和内存带宽需求。</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>五、实战示例：ResNet-18在Jetson Nano上的部署</h2>
+            <h3>5.1 环境准备</h3>
+            <div class="code-block">
+<pre>
+# 安装PyTorch和TorchVision（JetPack 5.0+）
+wget https://nvidia.box.com/shared/static/ssf2v7pf5i245fk4i0q926hy4imzs2ph.whl -O torch-1.12.0-cp38-cp38-linux_aarch64.whl
+pip3 install torch-1.12.0-cp38-cp38-linux_aarch64.whl
+pip3 install torchvision --no-deps
+
+# 安装ONNX和TensorRT Python绑定
+pip3 install onnx onnxruntime
+pip3 install pycuda
+# TensorRT已包含在JetPack中，通常位于/usr/lib/python3.8/dist-packages/
+</pre>
+            </div>
+
+            <h3>5.2 从PyTorch到TensorRT引擎</h3>
+            <div class="code-block">
+<pre>
+import torch
+import torchvision.models as models
+import tensorrt as trt
+
+# 1. 加载PyTorch模型并导出ONNX
+model = models.resnet18(pretrained=True).eval().cuda()
+dummy_input = torch.randn(1, 3, 224, 224).cuda()
+torch.onnx.export(model, dummy_input, "resnet18.onnx",
+                  input_names=["input"], output_names=["output"],
+                  dynamic_axes={"input": {0: "batch_size"}},
+                  opset_version=11)
+
+# 2. 使用trtexec命令行工具构建TensorRT引擎（INT8量化）
+# trtexec --onnx=resnet18.onnx --saveEngine=resnet18.engine --int8 --calib=data/calib
+# 或使用Python API构建
+logger = trt.Logger(trt.Logger.WARNING)
+builder = trt.Builder(logger)
+network = builder.create_network(1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH))
+parser = trt.OnnxParser(network, logger)
+with open("resnet18.onnx", "rb") as f:
+    parser.parse(f.read())
+config = builder.create_builder_config()
+config.set_flag(trt.BuilderFlag.INT8)
+config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, 1 << 30) # 1GB
+serialized_engine = builder.build_serialized_network(network, config)
+with open("resnet18.engine", "wb") as f:
+    f.write(serialized_engine)
+</pre>
+            </div>
+
+            <h3>5.3 性能对比</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>部署方式</th>
+                        <th>推理延迟 (ms)</th>
+                        <th>GPU内存 (MB)</th>
+                        <th>功耗 (W)</th>
+                        <th>备注</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>PyTorch (FP32)</td>
+                        <td>45.2</td>
+                        <td>520</td>
+                        <td>8.5</td>
+                        <td>基线</td>
+                    </tr>
+                    <tr>
+                        <td>TensorRT (FP16)</td>
+                        <td>18.7</td>
+                        <td>280</td>
+                        <td>6.2</td>
+                        <td>2.4倍加速</td>
+                    </tr>
+                    <tr>
+                        <td>TensorRT (INT8)</td>
+                        <td>12.3</td>
+                        <td>210</td>
+                        <td>5.8</td>
+                        <td>3.7倍加速</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section>
+            <h2>六、常见问题与调试技巧</h2>
+            <div class="grid">
+                <div class="card">
+                    <h3>问题1：ONNX算子不支持</h3>
+                    <p><strong>解决方案：</strong></p>
+                    <ul>
+                        <li>使用ONNX opset 11或更高版本</li>
+                        <li>将复杂操作分解为多个基础操作</li>
+                        <li>使用TensorRT插件自定义算子</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>问题2：INT8精度下降过多</h3>
+                    <p><strong>解决方案：</strong></p>
+                    <ul>
+                        <li>增加校准数据集多样性</li>
+                        <li>尝试不同的校准算法（熵校准、最小最大校准）</li>
+                        <li>对敏感层保留FP16精度</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>问题3：推理速度不达预期</h3>
+                    <p><strong>解决方案：</strong></p>
+                    <ul>
+                        <li>检查是否触发了动态频率调整</li>
+                        <li>使用<code>nsys</code>进行性能剖析</li>
+                        <li>增大批处理大小以提高GPU利用率</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="tip-box">
+                <strong>调试工具推荐：</strong>
+                <ul>
+                    <li><code>trtexec --profilingVerbosity=detailed</code>：详细性能分析</li>
+                    <li><code>nsys profile</code>：NVIDIA Nsight Systems系统级性能分析</li>
+                    <li><code>nvtop</code>：GPU使用情况实时监控</li>
+                    <li><code>sudo tegrastats</code>：Jetson平台完整状态监控</li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <h2>七、总结与最佳实践</h2>
+            <p>边缘设备部署是一个系统工程，需要综合考虑模型、硬件、软件栈和实际应用场景。以下是关键最佳实践：</p>
+            <ol>
+                <li><strong>早做规划：</strong>在模型设计阶段就考虑部署约束（延迟、功耗、内存）。</li>
+                <li><strong>渐进优化：</strong>从FP32开始，逐步尝试FP16、INT8量化，监控精度变化。</li>
+                <li><strong>全面测试：</strong>在不同功耗模式、温度条件下测试性能稳定性。</li>
+                <li><strong>利用工具链：</strong>熟练使用TensorRT、Nsight、trtexec等工具进行优化和调试。</li>
+                <li><strong>考虑实际场景：</strong>根据应用需求调整优化目标（吞吐量 vs 延迟）。</li>
+            </ol>
+            <p>通过本讲的学习，你将能够将训练好的PyTorch模型高效部署到Jetson边缘设备，在严格的功耗约束下实现最优性能，为真正的边缘智能应用打下坚实基础。</p>
+        </section>
+    </div>
+
+    <footer>
+        <p>© 2023 蓝海资料掘金营 | 《PyTorch模型部署实战：ONNX与TensorRT全流程》课程</p>
+        <p>第27讲：边缘设备部署 - Jetson平台部署、TensorRT加速、功耗与性能平衡</p>
+    </footer>
+</body>
+</html>

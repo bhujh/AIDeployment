@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ResNet从训练到TensorRT部署全流程 | PyTorch模型部署实战</title>
+    <style>
+        :root {
+            --primary-blue: #4A90E2; /* 天蓝 */
+            --primary-yellow: #FFD700; /* 明黄 */
+            --primary-green: #7CB342; /* 草绿 */
+            --primary-orange: #FF9800; /* 橘色 */
+            --primary-pink: #F48FB1; /* 粉红 */
+            --light-bg: #F9F7F2; /* 浅米背景 */
+            --dark-text: #333333; /* 深灰文字 */
+            --card-bg: #FFFFFF; /* 卡片白 */
+            --shadow: rgba(0, 0, 0, 0.1);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background-color: var(--light-bg);
+            color: var(--dark-text);
+            line-height: 1.6;
+            padding: 0 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-green));
+            color: white;
+            padding: 3rem 2rem;
+            border-radius: 0 0 20px 20px;
+            text-align: center;
+            margin-bottom: 2.5rem;
+            box-shadow: 0 10px 20px var(--shadow);
+        }
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .subtitle {
+            font-size: 1.3rem;
+            opacity: 0.95;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        main {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        section {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 5px 15px var(--shadow);
+            border-top: 8px solid var(--primary-yellow);
+        }
+        h2 {
+            color: var(--primary-blue);
+            border-bottom: 3px solid var(--primary-orange);
+            padding-bottom: 0.7rem;
+            margin-bottom: 1.5rem;
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        h2 svg {
+            width: 28px;
+            height: 28px;
+            fill: currentColor;
+        }
+        h3 {
+            color: var(--primary-green);
+            margin: 1.5rem 0 1rem 0;
+            font-size: 1.4rem;
+        }
+        p {
+            margin-bottom: 1rem;
+            text-align: justify;
+        }
+        ul, ol {
+            padding-left: 2rem;
+            margin-bottom: 1.5rem;
+        }
+        li {
+            margin-bottom: 0.5rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 3px 8px var(--shadow);
+        }
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background-color: var(--primary-blue);
+            color: white;
+            font-weight: 600;
+        }
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        tr:hover {
+            background-color: #e3f2fd;
+        }
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 1.5rem;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.95rem;
+            border-left: 5px solid var(--primary-orange);
+        }
+        code {
+            background: #eee;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            color: #d63384;
+        }
+        .svg-container {
+            display: flex;
+            justify-content: center;
+            margin: 2rem 0;
+        }
+        .svg-arch {
+            width: 100%;
+            max-width: 900px;
+            height: auto;
+            background: #fefefe;
+            border-radius: 10px;
+            padding: 1rem;
+            box-shadow: 0 5px 15px var(--shadow);
+        }
+        .highlight {
+            background-color: rgba(255, 215, 0, 0.15);
+            padding: 1.5rem;
+            border-radius: 10px;
+            border-left: 5px solid var(--primary-yellow);
+            margin: 1.5rem 0;
+        }
+        footer {
+            text-align: center;
+            padding: 2.5rem;
+            margin-top: 2rem;
+            background: linear-gradient(135deg, var(--primary-green), var(--primary-blue));
+            color: white;
+            border-radius: 20px 20px 0 0;
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            font-weight: bold;
+            box-shadow: 0 -5px 15px var(--shadow);
+        }
+        @media (max-width: 768px) {
+            body {
+                padding: 0 15px;
+            }
+            h1 {
+                font-size: 2.2rem;
+            }
+            section {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>第20课：图像分类模型部署实战</h1>
+        <p class="subtitle">ResNet从训练到TensorRT部署全流程详解</p>
+        <p>掌握工业级深度学习模型从开发到高效上线的完整链路</p>
+    </header>
+
+    <main>
+        <section>
+            <h2>
+                <svg viewBox="0 0 24 24"><path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/></svg>
+                课程概述
+            </h2>
+            <p>本课程将带领大家完成一个完整的图像分类模型（以ResNet-50为例）从<strong>PyTorch训练</strong>到<strong>ONNX导出</strong>，最终通过<strong>TensorRT加速</strong>并部署上线的全流程。这是工业界模型部署的核心技能。</p>
+            <div class="highlight">
+                <p><strong>学习目标：</strong> 理解端到端部署流程，掌握关键工具链（PyTorch, ONNX, TensorRT）的使用，能够独立完成一个高性能推理服务的搭建。</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>
+                <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                全流程架构图
+            </h2>
+            <div class="svg-container">
+                <svg class="svg-arch" viewBox="0 0 900 400" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#4A90E2" />
+                            <stop offset="100%" stop-color="#7CB342" />
+                        </linearGradient>
+                        <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#FF9800" />
+                            <stop offset="100%" stop-color="#F48FB1" />
+                        </linearGradient>
+                    </defs>
+                    <rect x="50" y="180" width="160" height="60" rx="10" fill="url(#grad1)" stroke="#333" stroke-width="2"/>
+                    <text x="130" y="215" text-anchor="middle" fill="white" font-size="16" font-weight="bold">1. PyTorch训练</text>
+                    <path d="M210 210 L250 210" stroke="#FF9800" stroke-width="3" marker-end="url(#arrow)"/>
+                    <rect x="250" y="180" width="160" height="60" rx="10" fill="url(#grad1)" stroke="#333" stroke-width="2"/>
+                    <text x="330" y="215" text-anchor="middle" fill="white" font-size="16" font-weight="bold">2. ONNX导出</text>
+                    <path d="M410 210 L450 210" stroke="#FF9800" stroke-width="3" marker-end="url(#arrow)"/>
+                    <rect x="450" y="180" width="160" height="60" rx="10" fill="url(#grad1)" stroke="#333" stroke-width="2"/>
+                    <text x="530" y="215" text-anchor="middle" fill="white" font-size="16" font-weight="bold">3. TensorRT优化</text>
+                    <path d="M610 210 L650 210" stroke="#FF9800" stroke-width="3" marker-end="url(#arrow)"/>
+                    <rect x="650" y="180" width="160" height="60" rx="10" fill="url(#grad1)" stroke="#333" stroke-width="2"/>
+                    <text x="730" y="215" text-anchor="middle" fill="white" font-size="16" font-weight="bold">4. 部署推理</text>
+                    <rect x="100" y="280" width="700" height="80" rx="15" fill="url(#grad2)" opacity="0.8" stroke="#333" stroke-width="2"/>
+                    <text x="450" y="310" text-anchor="middle" fill="white" font-size="18" font-weight="bold">核心工具链：PyTorch -> ONNX -> TensorRT -> C++/Python API</text>
+                    <defs>
+                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" fill="#FF9800"/>
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+            <p>上图展示了从模型开发到部署的四个核心阶段，以及贯穿始终的工具链。每个阶段都有其特定的任务和输出。</p>
+        </section>
+
+        <section>
+            <h2>
+                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+                详细步骤与代码实战
+            </h2>
+
+            <h3>步骤一：PyTorch模型训练与保存</h3>
+            <p>使用PyTorch在ImageNet数据集（或自定义数据集）上训练一个ResNet-50模型，并保存为标准的PyTorch模型文件（.pth）。</p>
+<pre><code>import torch
+import torch.nn as nn
+import torchvision.models as models
+
+# 1. 定义模型
+model = models.resnet50(pretrained=False)
+num_ftrs = model.fc.in_features
+model.fc = nn.Linear(num_ftrs, 1000) # 假设1000个类别
+
+# 2. 训练代码（此处简略）
+# ... (数据加载、损失函数、优化器、训练循环)
+
+# 3. 保存训练好的模型
+torch.save({
+    'model_state_dict': model.state_dict(),
+    'class_to_idx': train_dataset.class_to_idx
+}, 'resnet50_imagenet.pth')
+
+print("模型已保存为 'resnet50_imagenet.pth'")</code></pre>
+
+            <h3>步骤二：将PyTorch模型导出为ONNX格式</h3>
+            <p>ONNX（Open Neural Network Exchange）是一个开放的模型格式，用于在不同框架间转换模型。</p>
+<pre><code>import torch
+import torchvision.models as models
+
+# 加载训练好的模型
+checkpoint = torch.load('resnet50_imagenet.pth')
+model = models.resnet50(pretrained=False)
+model.fc = torch.nn.Linear(model.fc.in_features, 1000)
+model.load_state_dict(checkpoint['model_state_dict'])
+model.eval()
+
+# 创建示例输入张量（符合模型预期输入尺寸）
+dummy_input = torch.randn(1, 3, 224, 224, device='cuda' if torch.cuda.is_available() else 'cpu')
+
+# 指定输入输出的名称
+input_names = ["input"]
+output_names = ["output"]
+
+# 导出模型为ONNX格式
+torch.onnx.export(model,
+                  dummy_input,
+                  "resnet50.onnx",
+                  verbose=True,
+                  input_names=input_names,
+                  output_names=output_names,
+                  opset_version=11, # 指定ONNX算子集版本
+                  dynamic_axes={'input': {0: 'batch_size'}, # 支持动态batch
+                                'output': {0: 'batch_size'}})
+
+print("ONNX模型已导出为 'resnet50.onnx'")</code></pre>
+
+            <h3>步骤三：使用TensorRT优化ONNX模型</h3>
+            <p>TensorRT是NVIDIA推出的高性能深度学习推理优化器和运行时。它能优化模型，并在NVIDIA GPU上提供低延迟、高吞吐量的推理。</p>
+            <p><strong>方法一：使用TensorRT Python API</strong></p>
+<pre><code>import tensorrt as trt
+
+TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
+EXPLICIT_BATCH = 1 << (int)(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
+
+def build_engine(onnx_file_path, engine_file_path):
+    """从ONNX文件构建TensorRT引擎"""
+    builder = trt.Builder(TRT_LOGGER)
+    network = builder.create_network(EXPLICIT_BATCH)
+    parser = trt.OnnxParser(network, TRT_LOGGER)
+
+    with open(onnx_file_path, 'rb') as model:
+        if not parser.parse(model.read()):
+            for error in range(parser.num_errors):
+                print(parser.get_error(error))
+            return None
+
+    config = builder.create_builder_config()
+    config.max_workspace_size = 1 << 30 # 1GB
+    config.set_flag(trt.BuilderFlag.FP16) # 启用FP16精度加速
+
+    engine = builder.build_engine(network, config)
+    with open(engine_file_path, "wb") as f:
+        f.write(engine.serialize())
+    return engine
+
+# 构建并保存引擎
+engine = build_engine("resnet50.onnx", "resnet50.engine")
+print("TensorRT引擎已保存为 'resnet50.engine'")</code></pre>
+            <p><strong>方法二：使用命令行工具trtexec（推荐用于生产）</strong></p>
+<pre><code># 基本转换命令
+trtexec --onnx=resnet50.onnx --saveEngine=resnet50_fp16.engine --fp16
+
+# 更多优化选项
+trtexec --onnx=resnet50.onnx \
+        --saveEngine=resnet50_optimized.engine \
+        --fp16 \
+        --workspace=4096 \
+        --minShapes=input:1x3x224x224 \
+        --optShapes=input:8x3x224x224 \
+        --maxShapes=input:32x3x224x224 \
+        --verbose</code></pre>
+        </section>
+
+        <section>
+            <h2>
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                关键技术与优化点
+            </h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>阶段</th>
+                        <th>关键技术</th>
+                        <th>优化目标</th>
+                        <th>常用工具/库</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>训练</strong></td>
+                        <td>混合精度训练、梯度累积、数据增强</td>
+                        <td>模型精度、训练速度</td>
+                        <td>PyTorch AMP, Albumentations</td>
+                    </tr>
+                    <tr>
+                        <td><strong>导出</strong></td>
+                        <td>算子兼容性、动态维度、版本控制</td>
+                        <td>转换成功率、灵活性</td>
+                        <td>torch.onnx, ONNX Simplifier</td>
+                    </tr>
+                    <tr>
+                        <td><strong>优化</strong></td>
+                        <td>层融合、精度校准、内核自动调优</td>
+                        <td>推理延迟、吞吐量</td>
+                        <td>TensorRT, Polygraphy</td>
+                    </tr>
+                    <tr>
+                        <td><strong>部署</strong></td>
+                        <td>流水线并行、内存复用、多流推理</td>
+                        <td>资源利用率、系统稳定性</td>
+                        <td>Triton Inference Server, C++ API</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="highlight">
+                <p><strong>核心优化提示：</strong> 在TensorRT阶段，务必根据实际部署场景（如最大Batch Size、输入分辨率）配置<code>optShapes</code>和<code>maxShapes</code>，以启用动态形状支持，并充分利用FP16或INT8量化来获得极致性能。</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>
+                <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+                总结与最佳实践
+            </h2>
+            <ol>
+                <li><strong>流程标准化：</strong> 建立从训练到部署的标准化流水线，确保可复现性。</li>
+                <li><strong>版本管理：</strong> 对每个阶段的产物（.pth, .onnx, .engine）进行版本控制。</li>
+                <li><strong>验证贯穿始终：</strong> 在每个转换步骤后，都必须进行精度验证，确保输出一致。
+<pre><code># 简易验证示例：比较PyTorch和TensorRT的输出
+import numpy as np
+# ... 加载PyTorch和TensorRT模型
+diff = np.abs(pytorch_output - tensorrt_output).max()
+print(f"最大输出差异: {diff}") # 应为一个极小的值（如1e-5）</code></pre>
+                </li>
+                <li><strong>性能剖析：</strong> 使用<code>nsys</code>或TensorRT内置分析器定位性能瓶颈。</li>
+                <li><strong>选择合适精度：</strong> 平衡精度（FP32）与速度（FP16/INT8），根据业务需求选择。</li>
+            </ol>
+            <p>通过本课程的学习，你将能够独立完成一个工业级图像分类模型的完整部署流程，为后续更复杂的模型（如检测、分割）部署打下坚实基础。</p>
+        </section>
+    </main>
+
+    <footer>
+        蓝海资料掘金营
+    </footer>
+</body>
+</html>

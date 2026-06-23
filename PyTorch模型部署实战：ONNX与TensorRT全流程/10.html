@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyTorch模型部署实战：ONNX到TensorRT转换</title>
+    <style>
+        :root {
+            --primary: #4CAF50; /* 青草绿 */
+            --secondary: #FF9800; /* 活力橙 */
+            --accent: #2196F3; /* 天空蓝 */
+            --light: #FFF9C4; /* 淡鹅黄 */
+            --dark: #333333;
+            --text: #2C3E50;
+            --background: #F5F5F5;
+        }
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            padding: 2rem 1rem;
+            border-radius: 0 0 20px 20px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1 {
+            margin: 0;
+            font-size: 2.8rem;
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-top: 0.5rem;
+        }
+        section {
+            background: white;
+            margin: 2rem 0;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border-left: 6px solid var(--secondary);
+        }
+        h2 {
+            color: var(--primary);
+            border-bottom: 2px dashed var(--light);
+            padding-bottom: 0.5rem;
+        }
+        h3 {
+            color: var(--accent);
+        }
+        pre {
+            background: #f8f9fa;
+            border-left: 4px solid var(--accent);
+            padding: 1rem;
+            overflow-x: auto;
+            border-radius: 5px;
+            font-family: 'Consolas', monospace;
+            margin: 1rem 0;
+        }
+        code {
+            background: #e8f5e9;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #d32f2f;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: var(--light);
+            color: var(--text);
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        ul, ol {
+            padding-left: 1.5rem;
+        }
+        li {
+            margin-bottom: 0.5rem;
+        }
+        .svg-container {
+            text-align: center;
+            margin: 2rem 0;
+            background: #fefefe;
+            padding: 1rem;
+            border-radius: 10px;
+        }
+        .architecture {
+            width: 100%;
+            height: 300px;
+        }
+        footer {
+            text-align: center;
+            padding: 2rem;
+            margin-top: 3rem;
+            background: linear-gradient(135deg, var(--dark), #555);
+            color: white;
+            border-radius: 20px 20px 0 0;
+            font-size: 1.2rem;
+            letter-spacing: 1px;
+        }
+        .tip {
+            background-color: #E3F2FD;
+            border-left: 4px solid var(--accent);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 5px 5px 0;
+        }
+        .highlight {
+            background-color: var(--light);
+            padding: 0.2rem 0.5rem;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>ONNX到TensorRT转换</h1>
+            <p class="subtitle">trtexec命令行工具、Python API解析器、构建配置全解析</p>
+            <p>《PyTorch模型部署实战：ONNX与TensorRT全流程》第10课</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <section>
+            <h2>课程概述</h2>
+            <p>本章节将深入讲解如何将训练好的ONNX模型转换为高性能的TensorRT引擎。我们将覆盖三种核心方法：<span class="highlight">trtexec命令行工具</span>、<span class="highlight">Python API解析器</span>以及详细的<span class="highlight">构建配置</span>。掌握这些技能是模型部署工程师从实验到生产的关键一步。</p>
+            
+            <div class="svg-container">
+                <svg class="architecture" viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="50" y="100" width="120" height="60" rx="10" fill="#4CAF50" stroke="#2E7D32" stroke-width="2"/>
+                    <text x="110" y="135" text-anchor="middle" fill="white" font-weight="bold">ONNX模型</text>
+                    <path d="M 180 130 L 250 130" stroke="#FF9800" stroke-width="3" marker-end="url(#arrow)"/>
+                    <rect x="250" y="100" width="150" height="60" rx="10" fill="#2196F3" stroke="#1565C0" stroke-width="2"/>
+                    <text x="325" y="135" text-anchor="middle" fill="white" font-weight="bold">TensorRT转换器</text>
+                    <path d="M 410 130 L 480 130" stroke="#FF9800" stroke-width="3" marker-end="url(#arrow)"/>
+                    <rect x="480" y="100" width="120" height="60" rx="10" fill="#9C27B0" stroke="#6A1B9A" stroke-width="2"/>
+                    <text x="540" y="135" text-anchor="middle" fill="white" font-weight="bold">TRT引擎</text>
+                    <defs>
+                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" fill="#FF9800"/>
+                        </marker>
+                    </defs>
+                    <text x="400" y="50" text-anchor="middle" fill="#333" font-size="18" font-weight="bold">ONNX到TensorRT转换流程</text>
+                    <text x="115" y="190" text-anchor="middle" fill="#4CAF50" font-size="14">.onnx文件</text>
+                    <text x="325" y="190" text-anchor="middle" fill="#2196F3" font-size="14">解析、优化、构建</text>
+                    <text x="540" y="190" text-anchor="middle" fill="#9C27B0" font-size="14">.engine文件</text>
+                </svg>
+            </div>
+        </section>
+
+        <section>
+            <h2>一、trtexec命令行工具</h2>
+            <p><code>trtexec</code>是TensorRT自带的一个功能强大的命令行工具，无需编写代码即可快速完成模型转换与性能测试。</p>
+            
+            <h3>1.1 基本用法</h3>
+            <pre><code># 基础转换命令
+trtexec --onnx=model.onnx --saveEngine=model.engine
+
+# 指定精度（FP16/FP32/INT8）
+trtexec --onnx=model.onnx --fp16 --saveEngine=model_fp16.engine
+trtexec --onnx=model.onnx --int8 --saveEngine=model_int8.engine
+
+# 指定工作空间大小（单位：MB）
+trtexec --onnx=model.onnx --workspace=2048 --saveEngine=model.engine</code></pre>
+
+            <h3>1.2 性能分析模式</h3>
+            <pre><code># 性能基准测试
+trtexec --onnx=model.onnx \
+        --shapes=input:1x3x224x224 \
+        --iterations=100 \
+        --avgRuns=10 \
+        --duration=5 \
+        --exportTimes=times.json</code></pre>
+
+            <div class="tip">
+                <strong>提示：</strong> trtexec非常适合快速原型验证和基准测试，但在生产环境中通常使用Python API进行更精细的控制。
+            </div>
+        </section>
+
+        <section>
+            <h2>二、Python API解析器</h2>
+            <p>TensorRT的Python API提供了最灵活的控制方式，适合集成到自动化部署流水线中。</p>
+            
+            <h3>2.1 核心组件</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>组件</th>
+                        <th>作用</th>
+                        <th>常用类/函数</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Builder</strong></td>
+                        <td>创建引擎配置和构建引擎</td>
+                        <td><code>trt.Builder</code>, <code>create_builder_config</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Parser</strong></td>
+                        <td>解析ONNX模型为TensorRT网络</td>
+                        <td><code>trt.OnnxParser</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Network</strong></td>
+                        <td>中间表示，可进行自定义修改</td>
+                        <td><code>trt.INetworkDefinition</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Config</strong></td>
+                        <td>构建配置，控制精度、内存等</td>
+                        <td><code>trt.IBuilderConfig</code></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>2.2 完整转换示例</h3>
+            <pre><code>import tensorrt as trt
+import os
+
+def build_engine_from_onnx(onnx_file_path, engine_file_path, fp16_mode=True):
+    """从ONNX文件构建TensorRT引擎"""
+    TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
+    builder = trt.Builder(TRT_LOGGER)
+    network = builder.create_network(1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH))
+    parser = trt.OnnxParser(network, TRT_LOGGER)
+    
+    # 解析ONNX模型
+    with open(onnx_file_path, 'rb') as model:
+        if not parser.parse(model.read()):
+            print('ERROR: Failed to parse the ONNX file.')
+            for error in range(parser.num_errors):
+                print(parser.get_error(error))
+            return None
+    
+    # 构建配置
+    config = builder.create_builder_config()
+    config.max_workspace_size = 1 << 30  # 1GB
+    if fp16_mode and builder.platform_has_fast_fp16:
+        config.set_flag(trt.BuilderFlag.FP16)
+    
+    # 构建引擎
+    engine = builder.build_engine(network, config)
+    if engine is None:
+        print('ERROR: Failed to build engine.')
+        return None
+    
+    # 保存引擎
+    with open(engine_file_path, 'wb') as f:
+        f.write(engine.serialize())
+    
+    print(f'Engine saved to {engine_file_path}')
+    return engine
+
+# 使用示例
+if __name__ == '__main__':
+    build_engine_from_onnx('resnet50.onnx', 'resnet50.engine')</code></pre>
+        </section>
+
+        <section>
+            <h2>三、构建配置详解</h2>
+            <p>构建配置决定了引擎的最终性能、精度和兼容性，是优化部署的关键。</p>
+            
+            <h3>3.1 精度配置</h3>
+            <ul>
+                <li><strong>FP32模式</strong>：默认模式，精度最高，速度最慢</li>
+                <li><strong>FP16模式</strong>：半精度，速度提升明显，精度损失可接受</li>
+                <li><strong>INT8模式</strong>：需要校准，速度最快，精度损失需评估</li>
+            </ul>
+            
+            <h3>3.2 关键配置选项</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>配置项</th>
+                        <th>说明</th>
+                        <th>示例代码</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>工作空间大小</td>
+                        <td>GPU内存分配上限</td>
+                        <td><code>config.max_workspace_size = 1 &lt;&lt; 30</code></td>
+                    </tr>
+                    <tr>
+                        <td>批处理大小</td>
+                        <td>动态/静态批处理设置</td>
+                        <td><code>builder.max_batch_size = 32</code></td>
+                    </tr>
+                    <tr>
+                        <td>层融合优化</td>
+                        <td>自动融合卷积、BN、激活层</td>
+                        <td><code>config.set_flag(trt.BuilderFlag.FP16)</code></td>
+                    </tr>
+                    <tr>
+                        <td>动态形状</td>
+                        <td>支持可变输入尺寸</td>
+                        <td><code>profile = builder.create_optimization_profile()</code></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>3.3 INT8校准配置</h3>
+            <pre><code>class Calibrator(trt.IInt8EntropyCalibrator2):
+    def __init__(self, calibration_data, cache_file='calibration.cache'):
+        super().__init__()
+        self.data = calibration_data
+        self.cache_file = cache_file
+        self.index = 0
+        
+    def get_batch_size(self):
+        return 1
+    
+    def get_batch(self, names):
+        if self.index < len(self.data):
+            batch = self.data[self.index]
+            self.index += 1
+            return [batch.data_ptr()]
+        return None
+    
+    def read_calibration_cache(self):
+        if os.path.exists(self.cache_file):
+            with open(self.cache_file, 'rb') as f:
+                return f.read()
+        return None
+    
+    def write_calibration_cache(self, cache):
+        with open(self.cache_file, 'wb') as f:
+            f.write(cache)
+
+# 启用INT8校准
+config.int8_calibrator = Calibrator(calibration_data)
+config.set_flag(trt.BuilderFlag.INT8)</code></pre>
+        </section>
+
+        <section>
+            <h2>四、最佳实践与常见问题</h2>
+            
+            <h3>4.1 转换流程检查清单</h3>
+            <ol>
+                <li>✅ 验证ONNX模型版本与TensorRT兼容性</li>
+                <li>✅ 检查模型算子是否全部支持（使用<code>polygraphy</code>工具）</li>
+                <li>✅ 根据部署硬件选择合适精度（FP16/INT8）</li>
+                <li>✅ 设置合理的工作空间大小（通常1-4GB）</li>
+                <li>✅ 保存构建日志以便调试</li>
+                <li>✅ 验证转换后引擎的精度损失（<1%通常可接受）</li>
+            </ol>
+
+            <h3>4.2 常见错误与解决方案</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>错误类型</th>
+                        <th>可能原因</th>
+                        <th>解决方案</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>解析失败</td>
+                        <td>ONNX版本不兼容、算子不支持</td>
+                        <td>使用<code>onnx-simplifier</code>简化模型，更新TensorRT版本</td>
+                    </tr>
+                    <tr>
+                        <td>内存不足</td>
+                        <td>工作空间设置过小</td>
+                        <td>增加<code>max_workspace_size</code>，尝试FP16/INT8</td>
+                    </tr>
+                    <tr>
+                        <td>精度损失大</td>
+                        <td>FP16/INT8量化误差</td>
+                        <td>使用混合精度，对敏感层保持FP32</td>
+                    </tr>
+                    <tr>
+                        <td>推理速度慢</td>
+                        <td>未启用层融合、批处理大小不合适</td>
+                        <td>检查构建标志，优化批处理大小</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="tip">
+                <strong>高级技巧：</strong> 对于生产环境，建议实现自动化转换流水线，包含模型验证、自动精度选择、性能回归测试等环节。
+            </div>
+        </section>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>蓝海资料掘金营</p>
+            <p>《PyTorch模型部署实战：ONNX与TensorRT全流程》课程材料</p>
+            <p>© 2023 深度学习部署专家系列课程</p>
+        </div>
+    </footer>
+</body>
+</html>

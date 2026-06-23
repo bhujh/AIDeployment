@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>结构化剪枝实战 - 模型量化与压缩技术实战</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50; /* 青草绿 */
+            --secondary-color: #2196F3; /* 天空蓝 */
+            --accent-color: #FF9800; /* 活力橙 */
+            --light-color: #FFF9C4; /* 淡鹅黄 */
+            --background-color: #E8F5E9; /* 浅草绿背景 */
+            --text-color: #333333;
+            --border-color: #81C784;
+            --card-bg: #FFFFFF;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            border: double 8px var(--border-color);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 100, 0, 0.1);
+        }
+        header {
+            text-align: center;
+            padding: 30px 20px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-radius: 10px 10px 0 0;
+            margin-bottom: 30px;
+            border-bottom: double 6px white;
+        }
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        main {
+            padding: 0 20px;
+        }
+        section {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 15px rgba(0, 100, 0, 0.08);
+            border: solid 2px var(--border-color);
+            transition: transform 0.3s;
+        }
+        section:hover {
+            transform: translateY(-5px);
+        }
+        h2 {
+            color: var(--secondary-color);
+            border-left: 6px solid var(--accent-color);
+            padding-left: 15px;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+        h3 {
+            color: var(--primary-color);
+            margin: 15px 0 10px;
+            font-size: 1.4rem;
+        }
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        ul, ol {
+            margin-left: 25px;
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            border: 2px solid var(--border-color);
+        }
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 12px 15px;
+            text-align: left;
+        }
+        th {
+            background-color: var(--light-color);
+            color: var(--text-color);
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .code-container {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+            border-left: 5px solid var(--accent-color);
+        }
+        pre {
+            white-space: pre-wrap;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        .svg-container {
+            display: flex;
+            justify-content: center;
+            margin: 25px 0;
+        }
+        svg {
+            max-width: 100%;
+            height: auto;
+        }
+        .comparison-table {
+            background-color: #E3F2FD;
+            border-color: var(--secondary-color);
+        }
+        footer {
+            text-align: center;
+            padding: 25px;
+            margin-top: 40px;
+            background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-radius: 0 0 10px 10px;
+            border-top: double 6px white;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+        }
+        .highlight {
+            background-color: var(--light-color);
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .note {
+            background-color: #FFF3E0;
+            border-left: 4px solid var(--accent-color);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>结构化剪枝实战</h1>
+        <p class="subtitle">模型量化与压缩技术实战 · 第十章</p>
+        <p>通道剪枝、滤波器剪枝、使用PyTorch实现与微调</p>
+    </header>
+
+    <main>
+        <section>
+            <h2>一、结构化剪枝概述</h2>
+            <p><span class="highlight">结构化剪枝</span>是一种模型压缩技术，它通过移除神经网络中完整的结构单元（如通道、滤波器、神经元块）来减少模型大小和计算量。与细粒度剪枝（移除单个权重）不同，结构化剪枝直接产生硬件友好的规整网络结构，无需特殊硬件或库支持即可加速。</p>
+            <div class="svg-container">
+                <svg width="800" height="200" viewBox="0 0 800 200">
+                    <rect x="50" y="50" width="200" height="100" fill="#FFCCBC" stroke="#D84315" stroke-width="3" rx="10"/>
+                    <text x="150" y="110" text-anchor="middle" fill="#D84315" font-size="18" font-weight="bold">原始模型</text>
+                    <path d="M250 100 L300 100" stroke="#4CAF50" stroke-width="4" marker-end="url(#arrow)"/>
+                    <rect x="300" y="50" width="200" height="100" fill="#C8E6C9" stroke="#388E3C" stroke-width="3" rx="10"/>
+                    <text x="400" y="110" text-anchor="middle" fill="#388E3C" font-size="18" font-weight="bold">结构化剪枝</text>
+                    <path d="M500 100 L550 100" stroke="#2196F3" stroke-width="4" marker-end="url(#arrow)"/>
+                    <rect x="550" y="50" width="200" height="100" fill="#BBDEFB" stroke="#1976D2" stroke-width="3" rx="10"/>
+                    <text x="650" y="110" text-anchor="middle" fill="#1976D2" font-size="18" font-weight="bold">精简模型</text>
+                    <defs>
+                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" fill="#2196F3"/>
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+            <p>核心优势：</p>
+            <ul>
+                <li><strong>硬件友好</strong>：剪枝后仍是规整的矩阵运算，可直接利用现有深度学习框架和硬件加速。</li>
+                <li><strong>加速明显</strong>：直接减少FLOPs和内存占用，推理速度提升显著。</li>
+                <li><strong>易于微调</strong>：剪枝后的模型结构完整，便于使用少量数据快速恢复精度。</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>二、通道剪枝与滤波器剪枝</h2>
+            <p>结构化剪枝的两个主要方向：<span class="highlight">通道剪枝</span>（Channel Pruning）和<span class="highlight">滤波器剪枝</span>（Filter Pruning）。</p>
+
+            <h3>2.1 通道剪枝 (Channel Pruning)</h3>
+            <p>针对卷积层的输出通道进行剪枝。移除一个输出通道，意味着移除该通道对应的所有滤波器，以及下一层中与该通道相连的所有输入通道。</p>
+            <div class="svg-container">
+                <svg width="700" height="250" viewBox="0 0 700 250">
+                    <!-- 原始卷积 -->
+                    <rect x="50" y="50" width="120" height="150" fill="#E1BEE7" stroke="#7B1FA2" stroke-width="2"/>
+                    <text x="110" y="40" text-anchor="middle" fill="#7B1FA2" font-size="14">输入特征图</text>
+                    <text x="110" y="135" text-anchor="middle" fill="#7B1FA2" font-size="12">C_in=3</text>
+                    <rect x="200" y="80" width="60" height="90" fill="#BBDEFB" stroke="#1976D2" stroke-width="2"/>
+                    <text x="230" y="75" text-anchor="middle" fill="#1976D2" font-size="14">卷积核</text>
+                    <text x="230" y="135" text-anchor="middle" fill="#1976D2" font-size="12">C_out=4</text>
+                    <path d="M170 125 L200 125" stroke="#4CAF50" stroke-width="2"/>
+                    <rect x="290" y="50" width="120" height="150" fill="#C8E6C9" stroke="#388E3C" stroke-width="2"/>
+                    <text x="350" y="40" text-anchor="middle" fill="#388E3C" font-size="14">输出特征图</text>
+                    <text x="350" y="135" text-anchor="middle" fill="#388E3C" font-size="12">C_out=4</text>
+                    <path d="M260 125 L290 125" stroke="#4CAF50" stroke-width="2"/>
+                    <!-- 剪枝后 -->
+                    <rect x="450" y="50" width="120" height="150" fill="#E1BEE7" stroke="#7B1FA2" stroke-width="2"/>
+                    <text x="510" y="40" text-anchor="middle" fill="#7B1FA2" font-size="14">输入特征图</text>
+                    <text x="510" y="135" text-anchor="middle" fill="#7B1FA2" font-size="12">C_in=3</text>
+                    <rect x="600" y="80" width="60" height="60" fill="#BBDEFB" stroke="#1976D2" stroke-width="2"/>
+                    <text x="630" y="75" text-anchor="middle" fill="#1976D2" font-size="14">卷积核</text>
+                    <text x="630" y="115" text-anchor="middle" fill="#1976D2" font-size="12">C_out=2</text>
+                    <path d="M570 110 L600 110" stroke="#FF9800" stroke-width="2"/>
+                    <rect x="690" y="50" width="120" height="150" fill="#C8E6C9" stroke="#388E3C" stroke-width="2" opacity="0.7"/>
+                    <text x="750" y="40" text-anchor="middle" fill="#388E3C" font-size="14">输出特征图</text>
+                    <text x="750" y="135" text-anchor="middle" fill="#388E3C" font-size="12">C_out=2</text>
+                    <path d="M660 110 L690 110" stroke="#FF9800" stroke-width="2"/>
+                    <!-- 标注 -->
+                    <text x="110" y="220" text-anchor="middle" fill="#333" font-size="14">剪枝前</text>
+                    <text x="510" y="220" text-anchor="middle" fill="#333" font-size="14">通道剪枝后</text>
+                    <path d="M350 170 L350 200 L510 200 L510 170" stroke="#F44336" stroke-width="2" stroke-dasharray="5,5" fill="none"/>
+                </svg>
+            </div>
+            <p><strong>实现要点</strong>：通常基于通道的重要性评分（如L1范数、BN层缩放因子）进行排序，移除评分低的通道。</p>
+
+            <h3>2.2 滤波器剪枝 (Filter Pruning)</h3>
+            <p>本质与通道剪枝类似，但视角不同。滤波器剪枝直接移除整个滤波器（即3D权重张量），从而同时减少输出通道和下一层的输入通道。</p>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>对比项</th>
+                        <th>通道剪枝</th>
+                        <th>滤波器剪枝</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>操作对象</strong></td>
+                        <td>输出通道（Output Channel）</td>
+                        <td>整个滤波器（Filter）</td>
+                    </tr>
+                    <tr>
+                        <td><strong>影响范围</strong></td>
+                        <td>当前层和下一层</td>
+                        <td>当前层和下一层</td>
+                    </tr>
+                    <tr>
+                        <td><strong>重要性评估</strong></td>
+                        <td>通道激活值、BN层γ系数</td>
+                        <td>滤波器权重范数、特征图重要性</td>
+                    </tr>
+                    <tr>
+                        <td><strong>实现复杂度</strong></td>
+                        <td>中等</td>
+                        <td>中等</td>
+                    </tr>
+                    <tr>
+                        <td><strong>典型方法</strong></td>
+                        <td>ThiNet, Channel Pruning</td>
+                        <td>Pruning Filters, FPGM</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section>
+            <h2>三、使用PyTorch实现结构化剪枝</h2>
+            <p>以下是一个基于滤波器L1范数的结构化剪枝PyTorch实现示例。</p>
+            <div class="code-container">
+                <pre><code>import torch
+import torch.nn as nn
+import torch.nn.utils.prune as prune
+import numpy as np
+
+class StructuredFilterPruner:
+    """
+    基于L1范数的滤波器结构化剪枝器
+    """
+    def __init__(self, model, prune_ratio=0.3):
+        """
+        Args:
+            model: 要剪枝的PyTorch模型
+            prune_ratio: 目标剪枝比例（每层）
+        """
+        self.model = model
+        self.prune_ratio = prune_ratio
+        self.masks = {}  # 存储剪枝掩码
+
+    def compute_filter_importance(self, conv_layer):
+        """计算滤波器重要性（L1范数）"""
+        return torch.norm(conv_layer.weight.data, p=1, dim=(1, 2, 3))
+
+    def prune_conv_layer(self, conv_layer, layer_name):
+        """对单个卷积层进行滤波器剪枝"""
+        importance = self.compute_filter_importance(conv_layer)
+        num_filters = len(importance)
+        num_prune = int(self.prune_ratio * num_filters)
+
+        if num_prune == 0:
+            return None
+
+        # 选择重要性最低的滤波器索引
+        prune_indices = torch.argsort(importance)[:num_prune].tolist()
+        keep_indices = [i for i in range(num_filters) if i not in prune_indices]
+
+        # 创建掩码（1保留，0剪枝）
+        mask = torch.ones(num_filters, dtype=torch.bool)
+        mask[prune_indices] = 0
+        self.masks[layer_name] = mask
+
+        # 应用掩码：直接移除权重（实际中常创建新层）
+        pruned_weight = conv_layer.weight.data[keep_indices, :, :, :].clone()
+        if conv_layer.bias is not None:
+            pruned_bias = conv_layer.bias.data[keep_indices].clone()
+        else:
+            pruned_bias = None
+
+        # 创建新的卷积层（输出通道数减少）
+        pruned_conv = nn.Conv2d(
+            in_channels=conv_layer.in_channels,
+            out_channels=len(keep_indices),
+            kernel_size=conv_layer.kernel_size,
+            stride=conv_layer.stride,
+            padding=conv_layer.padding,
+            dilation=conv_layer.dilation,
+            groups=conv_layer.groups,
+            bias=conv_layer.bias is not None
+        )
+        pruned_conv.weight.data = pruned_weight
+        if pruned_bias is not None:
+            pruned_conv.bias.data = pruned_bias
+
+        return pruned_conv
+
+    def prune_model(self):
+        """遍历并剪枝模型中的所有卷积层"""
+        pruned_model = self.model
+        for name, module in self.model.named_modules():
+            if isinstance(module, nn.Conv2d):
+                print(f"Pruning layer: {name}")
+                pruned_conv = self.prune_conv_layer(module, name)
+                if pruned_conv is not None:
+                    # 替换原层（实际中需要递归替换，此处为简化示例）
+                    setattr(self.model, name.split('.')[-1], pruned_conv)
+        return self.model
+
+# 使用示例
+if __name__ == "__main__":
+    # 假设有一个简单的CNN模型
+    class SimpleCNN(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.conv1 = nn.Conv2d(3, 32, 3, padding=1)
+            self.conv2 = nn.Conv2d(32, 64, 3, padding=1)
+            self.fc = nn.Linear(64 * 28 * 28, 10)
+
+        def forward(self, x):
+            x = torch.relu(self.conv1(x))
+            x = torch.relu(self.conv2(x))
+            x = x.view(x.size(0), -1)
+            return self.fc(x)
+
+    model = SimpleCNN()
+    print("原始模型 conv2 输出通道数:", model.conv2.out_channels)
+
+    pruner = StructuredFilterPruner(model, prune_ratio=0.5)
+    pruned_model = pruner.prune_model()
+
+    print("剪枝后模型 conv2 输出通道数:", pruned_model.conv2.out_channels)
+    print("剪枝完成！")</code></pre>
+            </div>
+            <div class="note">
+                <strong>注意：</strong>上述示例为教学演示，实际应用中需要考虑下一层输入通道的同步调整、BN层的适配以及更复杂的重要性评估策略。
+            </div>
+        </section>
+
+        <section>
+            <h2>四、剪枝后的模型微调</h2>
+            <p>剪枝操作会不可避免地造成模型精度损失，<span class="highlight">微调（Fine-tuning）</span>是恢复精度的关键步骤。</p>
+            <h3>4.1 微调策略</h3>
+            <ol>
+                <li><strong>学习率调整</strong>：使用较小的学习率（如原始学习率的1/10），避免破坏已学到的有用特征。</li>
+                <li><strong>训练周期</strong>：通常需要较少的epoch（10-20%的原训练周期）即可恢复大部分精度。</li>
+                <li><strong>数据使用</strong>：可使用全部训练数据，或仅使用一个子集以加速微调过程。</li>
+                <li><strong>冻结部分层</strong>：对于大型模型，可以冻结剪枝影响较小的层，只训练被剪枝层及其后续层。</li>
+            </ol>
+            <h3>4.2 PyTorch微调示例代码</h3>
+            <div class="code-container">
+                <pre><code>import torch.optim as optim
+from torch.utils.data import DataLoader
+
+def fine_tune_pruned_model(model, train_loader, val_loader, epochs=10):
+    """
+    微调剪枝后的模型
+    Args:
+        model: 剪枝后的模型
+        train_loader: 训练数据加载器
+        val_loader: 验证数据加载器
+        epochs: 微调轮数
+    """
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
+
+    # 使用较小的学习率和合适的优化器
+    optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-4)
+    criterion = nn.CrossEntropyLoss()
+
+    # 学习率调度器
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
+
+    print("开始微调...")
+    for epoch in range(epochs):
+        model.train()
+        train_loss = 0.0
+        correct = 0
+        total = 0
+
+        for batch_idx, (inputs, targets) in enumerate(train_loader):
+            inputs, targets = inputs.to(device), targets.to(device)
+
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            loss = criterion(outputs, targets)
+            loss.backward()
+            optimizer.step()
+
+            train_loss += loss.item()
+            _, predicted = outputs.max(1)
+            total += targets.size(0)
+            correct += predicted.eq(targets).sum().item()
+
+        # 验证
+        model.eval()
+        val_correct = 0
+        val_total = 0
+        with torch.no_grad():
+            for inputs, targets in val_loader:
+                inputs, targets = inputs.to(device), targets.to(device)
+                outputs = model(inputs)
+                _, predicted = outputs.max(1)
+                val_total += targets.size(0)
+                val_correct += predicted.eq(targets).sum().item()
+
+        scheduler.step()
+
+        print(f"Epoch [{epoch+1}/{epochs}] | "
+              f"Train Loss: {train_loss/(batch_idx+1):.4f} | "
+              f"Train Acc: {100.*correct/total:.2f}% | "
+              f"Val Acc: {100.*val_correct/val_total:.2f}%")
+
+    print("微调完成！")
+    return model
+
+# 微调调用示例（假设已有数据加载器）
+# pruned_model = ...  # 剪枝后的模型
+# fine_tuned_model = fine_tune_pruned_model(pruned_model, train_loader, val_loader, epochs=15)</code></pre>
+            </div>
+            <h3>4.3 微调效果预期</h3>
+            <p>经过适当的微调，结构化剪枝模型通常能达到：</p>
+            <ul>
+                <li><strong>精度恢复</strong>：在图像分类任务上，可恢复至原模型精度的98%-99.5%。</li>
+                <li><strong>速度提升</strong>：FLOPs减少30%-50%，推理速度提升1.5-2倍。</li>
+                <li><strong>模型缩小</strong>：参数量减少30%-60%，模型文件显著减小。</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>五、实战流程总结</h2>
+            <div class="svg-container">
+                <svg width="800" height="300" viewBox="0 0 800 300">
+                    <rect x="50" y="50" width="120" height="60" rx="10" fill="#FFECB3" stroke="#FFA000" stroke-width="3"/>
+                    <text x="110" y="85" text-anchor="middle" fill="#FF6F00" font-size="16" font-weight="bold">1. 基准模型</text>
+                    <path d="M170 80 L210 80" stroke="#4CAF50" stroke-width="3" marker-end="url(#arrow2)"/>
+                    <rect x="210" y="50" width="120" height="60" rx="10" fill="#C8E6C9" stroke="#388E3C" stroke-width="3"/>
+                    <text x="270" y="85" text-anchor="middle" fill="#1B5E20" font-size="16" font-weight="bold">2. 评估重要性</text>
+                    <path d="M330 80 L370 80" stroke="#4CAF50" stroke-width="3" marker-end="url(#arrow2)"/>
+                    <rect x="370" y="50" width="120" height="60" rx="10" fill="#BBDEFB" stroke="#1976D2" stroke-width="3"/>
+                    <text x="430" y="85" text-anchor="middle" fill="#0D47A1" font-size="16" font-weight="bold">3. 执行剪枝</text>
+                    <path d="M490 80 L530 80" stroke="#4CAF50" stroke-width="3" marker-end="url(#arrow2)"/>
+                    <rect x="530" y="50" width="120" height="60" rx="10" fill="#FFCCBC" stroke="#D84315" stroke-width="3"/>
+                    <text x="590" y="85" text-anchor="middle" fill="#BF360C" font-size="16" font-weight="bold">4. 模型微调</text>
+                    <path d="M650 80 L690 80" stroke="#4CAF50" stroke-width="3" marker-end="url(#arrow2)"/>
+                    <rect x="690" y="50" width="120" height="60" rx="10" fill="#E1BEE7" stroke="#7B1FA2" stroke-width="3"/>
+                    <text x="750" y="85" text-anchor="middle" fill="#4A148C" font-size="16" font-weight="bold">5. 部署评估</text>
+                    <!-- 下方说明 -->
+                    <text x="110" y="170" text-anchor="middle" fill="#333" font-size="14">训练并评估原始模型精度</text>
+                    <text x="270" y="170" text-anchor="middle" fill="#333" font-size="14">计算滤波器/通道重要性分数</text>
+                    <text x="430" y="170" text-anchor="middle" fill="#333" font-size="14">按比例移除不重要结构</text>
+                    <text x="590" y="170" text-anchor="middle" fill="#333" font-size="14">使用小学习率恢复精度</text>
+                    <text x="750" y="170" text-anchor="middle" fill="#333" font-size="14">测试速度、精度并部署</text>
+                    <defs>
+                        <marker id="arrow2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" fill="#4CAF50"/>
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>步骤</th>
+                        <th>关键操作</th>
+                        <th>常用工具/指标</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>1. 基准模型</strong></td>
+                        <td>训练原始模型，获取基准精度和大小</td>
+                        <td>PyTorch/TensorFlow, Accuracy, FLOPs</td>
+                    </tr>
+                    <tr>
+                        <td><strong>2. 评估重要性</strong></td>
+                        <td>计算每个滤波器/通道的重要性分数</td>
+                        <td>L1/L2范数, BN γ系数, 特征图激活</td>
+                    </tr>
+                    <tr>
+                        <td><strong>3. 执行剪枝</strong></td>
+                        <td>按比例移除低重要性结构，重建模型</td>
+                        <td>自定义剪枝器, Torch Prune</td>
+                    </tr>
+                    <tr>
+                        <td><strong>4. 模型微调</strong></td>
+                        <td>使用小学习率训练剪枝后模型</td>
+                        <td>Adam/SGD, CosineAnnealingLR</td>
+                    </tr>
+                    <tr>
+                        <td><strong>5. 部署评估</strong></td>
+                        <td>测试最终精度、速度、模型大小</td>
+                        <td>ONNX, TensorRT, 推理时间</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+    </main>
+
+    <footer>
+        <p>公众号: 蓝海资料掘金营，微信 deep3321</p>
+        <p>《模型量化与压缩技术实战》 · 结构化剪枝实战</p>
+        <p>© 2026 深度学习工程实践 · 保留所有权利</p>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模型剪枝技术原理 - 《模型量化与压缩技术实战》</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50; /* 青草绿 */
+            --secondary-color: #FF9800; /* 活力橙 */
+            --accent-color: #2196F3; /* 天空蓝 */
+            --light-color: #FFF9C4; /* 淡鹅黄 */
+            --background-color: #F5F5F5; /* 浅灰背景 */
+            --text-color: #333333;
+            --border-color: #BDBDBD;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .container {
+            background-color: white;
+            border: double 8px var(--primary-color);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        .container::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            border: double 4px var(--accent-color);
+            border-radius: 20px;
+            pointer-events: none;
+            z-index: -1;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 3px dashed var(--secondary-color);
+        }
+        h1 {
+            color: var(--primary-color);
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        .subtitle {
+            color: var(--accent-color);
+            font-size: 1.4rem;
+            font-weight: 300;
+        }
+        h2 {
+            color: var(--secondary-color);
+            border-left: 6px solid var(--accent-color);
+            padding-left: 15px;
+            margin: 30px 0 20px;
+            font-size: 1.8rem;
+        }
+        h3 {
+            color: var(--primary-color);
+            margin: 25px 0 15px;
+            font-size: 1.4rem;
+        }
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        .content-section {
+            margin-bottom: 40px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+        }
+        .highlight-box {
+            background-color: var(--light-color);
+            border-left: 5px solid var(--secondary-color);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        }
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 12px 15px;
+            text-align: left;
+        }
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 600;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        ul, ol {
+            padding-left: 30px;
+            margin: 15px 0;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .code-block {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            border-left: 5px solid var(--accent-color);
+        }
+        .svg-container {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+        }
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+        .grid-item {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border-top: 5px solid var(--accent-color);
+        }
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 2px solid var(--primary-color);
+            color: #666;
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+        .footer-content {
+            background-color: var(--light-color);
+            padding: 15px;
+            border-radius: 10px;
+            display: inline-block;
+        }
+        .keyword {
+            background-color: #E3F2FD;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+        .step-list {
+            counter-reset: step-counter;
+            list-style-type: none;
+        }
+        .step-list li {
+            counter-increment: step-counter;
+            margin-bottom: 20px;
+            position: relative;
+            padding-left: 50px;
+        }
+        .step-list li::before {
+            content: counter(step-counter);
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: bold;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>模型剪枝技术原理</h1>
+            <p class="subtitle">《模型量化与压缩技术实战》第九章</p>
+            <p>探索如何通过剪枝技术减少神经网络参数，实现模型压缩与加速</p>
+        </header>
+
+        <section class="content-section">
+            <h2>一、剪枝技术概述</h2>
+            <p>模型剪枝是一种重要的模型压缩技术，通过移除神经网络中冗余或不重要的参数，在保持模型性能基本不变的前提下，减少模型大小和计算量。剪枝技术能够有效解决深度学习模型部署到资源受限设备（如移动设备、嵌入式系统）时的挑战。</p>
+            
+            <div class="highlight-box">
+                <p><strong>核心目标：</strong>在精度损失最小化的前提下，最大化模型稀疏性，减少参数数量和计算复杂度。</p>
+            </div>
+            
+            <div class="svg-container">
+                <svg width="800" height="200" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#4CAF50;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#2196F3;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <rect x="50" y="80" width="700" height="40" rx="20" fill="url(#grad1)" opacity="0.8"/>
+                    <circle cx="100" cy="100" r="30" fill="#FF9800"/>
+                    <text x="100" y="105" text-anchor="middle" fill="white" font-weight="bold" font-size="14">原始模型</text>
+                    <path d="M100 100 L200 100" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+                    <text x="150" y="95" text-anchor="middle" fill="#333" font-size="12">剪枝</text>
+                    
+                    <circle cx="300" cy="100" r="30" fill="#4CAF50"/>
+                    <text x="300" y="105" text-anchor="middle" fill="white" font-weight="bold" font-size="14">稀疏模型</text>
+                    <path d="M300 100 L400 100" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+                    <text x="350" y="95" text-anchor="middle" fill="#333" font-size="12">微调</text>
+                    
+                    <circle cx="500" cy="100" r="30" fill="#2196F3"/>
+                    <text x="500" y="105" text-anchor="middle" fill="white" font-weight="bold" font-size="14">压缩模型</text>
+                    <path d="M500 100 L600 100" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+                    <text x="550" y="95" text-anchor="middle" fill="#333" font-size="12">部署</text>
+                    
+                    <circle cx="700" cy="100" r="30" fill="#9C27B0"/>
+                    <text x="700" y="105" text-anchor="middle" fill="white" font-weight="bold" font-size="14">高效推理</text>
+                    
+                    <defs>
+                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" fill="#333"/>
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>二、结构化剪枝与非结构化剪枝</h2>
+            
+            <div class="comparison-grid">
+                <div class="grid-item">
+                    <h3>结构化剪枝</h3>
+                    <p>移除整个结构单元（如滤波器、通道、层），保持规整的矩阵结构，易于硬件加速。</p>
+                    <ul>
+                        <li><span class="keyword">滤波器剪枝</span>：移除整个卷积滤波器</li>
+                        <li><span class="keyword">通道剪枝</span>：移除特征图的通道</li>
+                        <li><span class="keyword">层剪枝</span>：移除整个网络层</li>
+                    </ul>
+                    <div class="svg-container">
+                        <svg width="250" height="120">
+                            <rect x="10" y="10" width="80" height="100" fill="#4CAF50" opacity="0.7"/>
+                            <rect x="100" y="10" width="80" height="100" fill="#FF9800" opacity="0.7"/>
+                            <rect x="190" y="10" width="80" height="100" fill="#4CAF50" opacity="0.7"/>
+                            <text x="50" y="65" text-anchor="middle" fill="white" font-size="14">保留</text>
+                            <text x="140" y="65" text-anchor="middle" fill="white" font-size="14">移除</text>
+                            <text x="230" y="65" text-anchor="middle" fill="white" font-size="14">保留</text>
+                            <text x="140" y="140" text-anchor="middle" fill="#333" font-size="12">结构化剪枝</text>
+                        </svg>
+                    </div>
+                </div>
+                
+                <div class="grid-item">
+                    <h3>非结构化剪枝</h3>
+                    <p>移除单个权重参数，产生稀疏权重矩阵，需要专用硬件或库支持稀疏计算。</p>
+                    <ul>
+                        <li><span class="keyword">细粒度剪枝</span>：移除单个权重</li>
+                        <li><span class="keyword">向量级剪枝</span>：移除权重向量</li>
+                        <li><span class="keyword">核级剪枝</span>：移除卷积核内权重</li>
+                    </ul>
+                    <div class="svg-container">
+                        <svg width="250" height="120">
+                            <rect x="10" y="10" width="230" height="100" fill="#E0E0E0"/>
+                            <!-- 绘制稀疏矩阵 -->
+                            <rect x="20" y="20" width="20" height="20" fill="#4CAF50"/>
+                            <rect x="60" y="50" width="20" height="20" fill="#4CAF50"/>
+                            <rect x="100" y="80" width="20" height="20" fill="#4CAF50"/>
+                            <rect x="140" y="30" width="20" height="20" fill="#4CAF50"/>
+                            <rect x="180" y="60" width="20" height="20" fill="#4CAF50"/>
+                            <rect x="220" y="40" width="20" height="20" fill="#4CAF50"/>
+                            <!-- 被剪枝的权重 -->
+                            <rect x="50" y="20" width="20" height="20" fill="#FF9800" opacity="0.7"/>
+                            <rect x="90" y="50" width="20" height="20" fill="#FF9800" opacity="0.7"/>
+                            <rect x="130" y="80" width="20" height="20" fill="#FF9800" opacity="0.7"/>
+                            <text x="140" y="140" text-anchor="middle" fill="#333" font-size="12">非结构化剪枝</text>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>对比维度</th>
+                        <th>结构化剪枝</th>
+                        <th>非结构化剪枝</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>剪枝粒度</strong></td>
+                        <td>粗粒度（滤波器、通道、层）</td>
+                        <td>细粒度（单个权重）</td>
+                    </tr>
+                    <tr>
+                        <td><strong>硬件友好性</strong></td>
+                        <td>高，保持规整结构</td>
+                        <td>低，需要稀疏计算支持</td>
+                    </tr>
+                    <tr>
+                        <td><strong>压缩率</strong></td>
+                        <td>中等，受结构限制</td>
+                        <td>高，可达到极高稀疏度</td>
+                    </tr>
+                    <tr>
+                        <td><strong>精度保持</strong></td>
+                        <td>可能下降较多</td>
+                        <td>通常更好</td>
+                    </tr>
+                    <tr>
+                        <td><strong>典型应用</strong></td>
+                        <td>移动端部署、边缘计算</td>
+                        <td>服务器端、专用AI芯片</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="content-section">
+            <h2>三、基于重要性的剪枝</h2>
+            <p>根据参数的重要性评分决定剪枝对象，常用的重要性度量包括：</p>
+            
+            <ol class="step-list">
+                <li><strong>权重绝对值</strong>：绝对值小的权重对输出影响小，优先剪枝</li>
+                <li><strong>梯度信息</strong>：梯度小的参数对损失函数影响小</li>
+                <li><strong>Hessian矩阵</strong>：基于二阶导数估计参数重要性</li>
+                <li><strong>激活值</strong>：激活值接近零的通道或神经元可剪枝</li>
+            </ol>
+            
+            <div class="highlight-box">
+                <p><strong>经典算法：</strong>Magnitude-based Pruning（基于幅度的剪枝）是最简单有效的剪枝方法之一，将权重绝对值小于阈值的参数置零。</p>
+            </div>
+            
+            <h3>基于权重大小的剪枝示例代码</h3>
+            <div class="code-block">
+<pre><code>import torch
+import torch.nn as nn
+
+def magnitude_pruning(model, pruning_rate=0.5):
+    """
+    基于权重绝对值的剪枝函数
+    model: PyTorch模型
+    pruning_rate: 剪枝率，要剪枝的比例
+    """
+    # 获取所有权重
+    all_weights = []
+    for name, param in model.named_parameters():
+        if 'weight' in name and len(param.shape) == 4:  # 卷积层权重
+            all_weights.append(param.data.abs().flatten())
+    
+    # 计算全局阈值
+    all_weights = torch.cat(all_weights)
+    threshold = torch.quantile(all_weights, pruning_rate)
+    
+    # 应用剪枝掩码
+    for name, param in model.named_parameters():
+        if 'weight' in name and len(param.shape) == 4:
+            # 创建掩码：大于阈值的权重保留
+            mask = param.data.abs() > threshold
+            param.data.mul_(mask.float())
+    
+    return model, threshold
+
+# 使用示例
+# pruned_model, threshold = magnitude_pruning(original_model, pruning_rate=0.3)</code></pre>
+            </div>
+            
+            <div class="svg-container">
+                <svg width="700" height="200">
+                    <text x="350" y="30" text-anchor="middle" fill="#333" font-size="16" font-weight="bold">基于重要性的剪枝流程</text>
+                    
+                    <rect x="50" y="60" width="120" height="60" rx="10" fill="#4CAF50" opacity="0.8"/>
+                    <text x="110" y="95" text-anchor="middle" fill="white" font-size="14">计算重要性</text>
+                    
+                    <path d="M170 90 L230 90" stroke="#333" stroke-width="2" marker-end="url(#arrow2)"/>
+                    
+                    <rect x="230" y="60" width="120" height="60" rx="10" fill="#2196F3" opacity="0.8"/>
+                    <text x="290" y="95" text-anchor="middle" fill="white" font-size="14">排序参数</text>
+                    
+                    <path d="M350 90 L410 90" stroke="#333" stroke-width="2" marker-end="url(#arrow2)"/>
+                    
+                    <rect x="410" y="60" width="120" height="60" rx="10" fill="#FF9800" opacity="0.8"/>
+                    <text x="470" y="95" text-anchor="middle" fill="white" font-size="14">应用剪枝</text>
+                    
+                    <path d="M530 90 L590 90" stroke="#333" stroke-width="2" marker-end="url(#arrow2)"/>
+                    
+                    <rect x="590" y="60" width="120" height="60" rx="10" fill="#9C27B0" opacity="0.8"/>
+                    <text x="650" y="95" text-anchor="middle" fill="white" font-size="14">微调恢复</text>
+                    
+                    <defs>
+                        <marker id="arrow2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" fill="#333"/>
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>四、基于梯度的剪枝</h2>
+            <p>利用梯度信息评估参数重要性，梯度小的参数对损失函数影响小，可优先剪枝。</p>
+            
+            <h3>主要方法</h3>
+            <ul>
+                <li><span class="keyword">梯度幅度</span>：梯度绝对值小的参数重要性低</li>
+                <li><span class="keyword">泰勒展开</span>：使用一阶泰勒展开估计剪枝对损失的影响</li>
+                <li><span class="keyword">OBD/OBS</span>：最优脑损伤/最优脑外科医生算法，考虑Hessian矩阵</li>
+            </ul>
+            
+            <h3>基于梯度的剪枝算法伪代码</h3>
+            <div class="code-block">
+<pre><code># 基于梯度的剪枝算法框架
+def gradient_based_pruning(model, dataloader, criterion, pruning_rate):
+    """
+    基于梯度的剪枝
+    model: 待剪枝模型
+    dataloader: 数据加载器
+    criterion: 损失函数
+    pruning_rate: 目标剪枝率
+    """
+    # 1. 计算每个参数的梯度重要性分数
+    importance_scores = {}
+    
+    # 前向传播计算损失
+    model.train()
+    for batch_idx, (data, target) in enumerate(dataloader):
+        output = model(data)
+        loss = criterion(output, target)
+        
+        # 反向传播计算梯度
+        loss.backward()
+        
+        # 计算梯度重要性（例如：梯度×权重）
+        for name, param in model.named_parameters():
+            if param.grad is not None:
+                # 重要性分数 = |权重 * 梯度|
+                score = torch.abs(param.data * param.grad)
+                if name in importance_scores:
+                    importance_scores[name] += score
+                else:
+                    importance_scores[name] = score
+    
+    # 2. 归一化重要性分数
+    all_scores = torch.cat([score.flatten() for score in importance_scores.values()])
+    
+    # 3. 根据重要性分数确定剪枝阈值
+    threshold = torch.quantile(all_scores, pruning_rate)
+    
+    # 4. 应用剪枝
+    masks = {}
+    for name, param in model.named_parameters():
+        if name in importance_scores:
+            mask = importance_scores[name] > threshold
+            param.data.mul_(mask.float())
+            masks[name] = mask
+    
+    return model, masks</code></pre>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>五、剪枝率与稀疏性控制</h2>
+            
+            <h3>剪枝策略</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>策略类型</th>
+                        <th>描述</th>
+                        <th>优点</th>
+                        <th>缺点</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>一次性剪枝</strong></td>
+                        <td>一次性达到目标稀疏度</td>
+                        <td>简单快速</td>
+                        <td>精度损失大</td>
+                    </tr>
+                    <tr>
+                        <td><strong>迭代剪枝</strong></td>
+                        <td>逐步增加稀疏度，每次剪枝后微调</td>
+                        <td>精度保持好</td>
+                        <td>耗时较长</td>
+                    </tr>
+                    <tr>
+                        <td><strong>自适应剪枝</strong></td>
+                        <td>根据训练动态调整剪枝率</td>
+                        <td>自动平衡</td>
+                        <td>实现复杂</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h3>稀疏性控制方法</h3>
+            <ol>
+                <li><strong>全局剪枝</strong>：跨层统一阈值，实现目标全局稀疏度</li>
+                <li><strong>局部剪枝</strong>：每层独立设置剪枝率，考虑层间差异</li>
+                <li><strong>结构化约束</strong>：对特定层或结构设置不同稀疏度目标</li>
+            </ol>
+            
+            <div class="svg-container">
+                <svg width="700" height="300">
+                    <text x="350" y="30" text-anchor="middle" fill="#333" font-size="16" font-weight="bold">迭代剪枝与微调过程</text>
+                    
+                    <!-- 迭代过程 -->
+                    <rect x="50" y="60" width="600" height="180" fill="none" stroke="#BDBDBD" stroke-width="2" stroke-dasharray="5,5"/>
+                    
+                    <!-- 初始模型 -->
+                    <circle cx="100" cy="150" r="25" fill="#4CAF50"/>
+                    <text x="100" y="155" text-anchor="middle" fill="white" font-size="12">初始模型</text>
+                    
+                    <path d="M125 150 L175 150" stroke="#333" stroke-width="2" marker-end="url(#arrow3)"/>
+                    <text x="150" y="145" text-anchor="middle" fill="#333" font-size="10">剪枝20%</text>
+                    
+                    <!-- 第一次剪枝 -->
+                    <circle cx="200" cy="150" r="25" fill="#2196F3"/>
+                    <text x="200" y="155" text-anchor="middle" fill="white" font-size="12">稀疏80%</text>
+                    
+                    <path d="M225 150 L275 150" stroke="#333" stroke-width="2" marker-end="url(#arrow3)"/>
+                    <text x="250" y="145" text-anchor="middle" fill="#333" font-size="10">微调</text>
+                    
+                    <!-- 第一次微调后 -->
+                    <circle cx="300" cy="150" r="25" fill="#4CAF50"/>
+                    <text x="300" y="155" text-anchor="middle" fill="white" font-size="12">恢复精度</text>
+                    
+                    <path d="M325 150 L375 150" stroke="#333" stroke-width="2" marker-end="url(#arrow3)"/>
+                    <text x="350" y="145" text-anchor="middle" fill="#333" font-size="10">剪枝40%</text>
+                    
+                    <!-- 第二次剪枝 -->
+                    <circle cx="400" cy="150" r="25" fill="#2196F3"/>
+                    <text x="400" y="155" text-anchor="middle" fill="white" font-size="12">稀疏60%</text>
+                    
+                    <path d="M425 150 L475 150" stroke="#333" stroke-width="2" marker-end="url(#arrow3)"/>
+                    <text x="450" y="145" text-anchor="middle" fill="#333" font-size="10">微调</text>
+                    
+                    <!-- 最终模型 -->
+                    <circle cx="500" cy="150" r="25" fill="#FF9800"/>
+                    <text x="500" y="155" text-anchor="middle" fill="white" font-size="12">稀疏50%</text>
+                    
+                    <path d="M525 150 L575 150" stroke="#333" stroke-width="2" marker-end="url(#arrow3)"/>
+                    <text x="550" y="145" text-anchor="middle" fill="#333" font-size="10">最终</text>
+                    
+                    <!-- 最终模型 -->
+                    <circle cx="600" cy="150" r="25" fill="#9C27B0"/>
+                    <text x="600" y="155" text-anchor="middle" fill="white" font-size="12">压缩模型</text>
+                    
+                    <!-- 稀疏度指示 -->
+                    <text x="100" y="200" text-anchor="middle" fill="#333" font-size="11">稀疏度: 100%</text>
+                    <text x="200" y="200" text-anchor="middle" fill="#333" font-size="11">稀疏度: 80%</text>
+                    <text x="300" y="200" text-anchor="middle" fill="#333" font-size="11">稀疏度: 80%</text>
+                    <text x="400" y="200" text-anchor="middle" fill="#333" font-size="11">稀疏度: 60%</text>
+                    <text x="500" y="200" text-anchor="middle" fill="#333" font-size="11">稀疏度: 50%</text>
+                    <text x="600" y="200" text-anchor="middle" fill="#333" font-size="11">稀疏度: 50%</text>
+                    
+                    <defs>
+                        <marker id="arrow3" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,8 L8,4 z" fill="#333"/>
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+            
+            <h3>剪枝率调度示例</h3>
+            <div class="code-block">
+<pre><code>import numpy as np
+
+def pruning_schedule(total_epochs, initial_sparsity=0, target_sparsity=0.8, schedule_type='linear'):
+    """
+    生成剪枝率调度计划
+    total_epochs: 总训练轮数
+    initial_sparsity: 初始稀疏度
+    target_sparsity: 目标稀疏度
+    schedule_type: 调度类型 ('linear', 'cubic', 'exponential')
+    """
+    sparsity_schedule = []
+    
+    if schedule_type == 'linear':
+        # 线性增长稀疏度
+        for epoch in range(total_epochs):
+            sparsity = initial_sparsity + (target_sparsity - initial_sparsity) * (epoch / total_epochs)
+            sparsity_schedule.append(sparsity)
+    
+    elif schedule_type == 'cubic':
+        # 三次方增长，后期加速
+        for epoch in range(total_epochs):
+            progress = epoch / total_epochs
+            sparsity = initial_sparsity + (target_sparsity - initial_sparsity) * (1 - (1 - progress) ** 3)
+            sparsity_schedule.append(sparsity)
+    
+    elif schedule_type == 'exponential':
+        # 指数增长，前期快速增加
+        for epoch in range(total_epochs):
+            sparsity = target_sparsity * (1 - np.exp(-5.0 * epoch / total_epochs))
+            sparsity_schedule.append(sparsity)
+    
+    return sparsity_schedule
+
+# 使用示例
+# schedule = pruning_schedule(100, initial_sparsity=0, target_sparsity=0.9, schedule_type='cubic')
+# 每轮训练根据schedule[epoch]设置当前稀疏度目标</code></pre>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>六、剪枝技术总结与最佳实践</h2>
+            
+            <div class="highlight-box">
+                <p><strong>剪枝技术选择指南：</strong></p>
+                <ul>
+                    <li><strong>移动端部署</strong>：优先选择结构化剪枝，硬件友好</li>
+                    <li><strong>服务器端推理</strong>：可考虑非结构化剪枝，追求极致压缩</li>
+                    <li><strong>精度敏感场景</strong>：采用迭代剪枝+微调，逐步增加稀疏度</li>
+                    <li><strong>训练资源充足</strong>：尝试基于梯度的剪枝方法</li>
+                </ul>
+            </div>
+            
+            <h3>剪枝流程最佳实践</h3>
+            <ol class="step-list">
+                <li><strong>预训练模型</strong>：使用在大规模数据集上预训练的模型作为起点</li>
+                <li><strong重要性评估</strong>：根据任务特点选择合适的重要性度量方法</li>
+                <li><strong>渐进式剪枝</strong>：采用迭代剪枝策略，每次剪枝后微调恢复精度</li>
+                <li><strong>稀疏性分布</strong>：不同层设置不同的剪枝率，敏感层剪枝率更低</li>
+                <li><strong>最终微调</strong>：达到目标稀疏度后，进行充分微调以恢复性能</li>
+                <li><strong>评估验证</strong>：在验证集上全面评估剪枝后模型的精度、速度和大小</li>
+            </ol>
+            
+            <div class="svg-container">
+                <svg width="800" height="400">
+                    <text x="400" y="30" text-anchor="middle" fill="#333" font-size="18" font-weight="bold">模型剪枝技术架构图</text>
+                    
+                    <!-- 输入层 -->
+                    <rect x="50" y="80" width="120" height="60" rx="10" fill="#4CAF50"/>
+                    <text x="110" y="115" text-anchor="middle" fill="white" font-size="14">原始模型</text>
+                    
+                    <!-- 剪枝方法层 -->
+                    <rect x="200" y="50" width="400" height="140" fill="none" stroke="#2196F3" stroke-width="2"/>
+                    <text x="400" y="40" text-anchor="middle" fill="#2196F3" font-size="16" font-weight="bold">剪枝方法</text>
+                    
+                    <!-- 结构化剪枝 -->
+                    <rect x="220" y="70" width="170" height="40" rx="5" fill="#FF9800" opacity="0.8"/>
+                    <text x="305" y="95" text-anchor="middle" fill="white" font-size="12">结构化剪枝</text>
+                    
+                    <!-- 非结构化剪枝 -->
+                    <rect x="410" y="70" width="170" height="40" rx="5" fill="#FF9800" opacity="0.8"/>
+                    <text x="495" y="95" text-anchor="middle" fill="white" font-size="12">非结构化剪枝</text>
+                    
+                    <!-- 重要性评估 -->
+                    <rect x="220" y="130" width="170" height="40" rx="5" fill="#9C27B0" opacity="0.8"/>
+                    <text x="305" y="155" text-anchor="middle" fill="white" font-size="12">基于重要性</text>
+                    
+                    <!-- 梯度评估 -->
+                    <rect x="410" y="130" width="170" height="40" rx="5" fill="#9C27B0" opacity="0.8"/>
+                    <text x="495" y="155" text-anchor="middle" fill="white" font-size="12">基于梯度</text>
+                    
+                    <!-- 连接线 -->
+                    <path d="M170 110 L200 110" stroke="#333" stroke-width="2"/>
+                    <path d="M200 90 L220 90" stroke="#333" stroke-width="2"/>
+                    <path d="M200 130 L220 130" stroke="#333" stroke-width="2"/>
+                    <path d="M390 90 L410 90" stroke="#333" stroke-width="2"/>
+                    <path d="M390 130 L410 130" stroke="#333" stroke-width="2"/>
+                    
+                    <!-- 剪枝策略层 -->
+                    <rect x="200" y="220" width="400" height="100" fill="none" stroke="#4CAF50" stroke-width="2"/>
+                    <text x="400" y="210" text-anchor="middle" fill="#4CAF50" font-size="16" font-weight="bold">剪枝策略</text>
+                    
+                    <!-- 一次性剪枝 -->
+                    <rect x="220" y="240" width="110" height="40" rx="5" fill="#2196F3" opacity="0.8"/>
+                    <text x="275"

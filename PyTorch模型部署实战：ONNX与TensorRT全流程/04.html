@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyTorch模型推理优化 - 蓝海资料掘金营</title>
+    <style>
+        :root {
+            --primary-blue: #4A90E2;
+            --primary-yellow: #FFD700;
+            --primary-green: #7CB342;
+            --primary-orange: #FF9800;
+            --primary-red: #EF5350;
+            --light-bg: #F9F7F3;
+            --card-bg: #FFFFFF;
+            --text-dark: #333333;
+            --text-light: #666666;
+            --shadow: rgba(0, 0, 0, 0.08);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background-color: var(--light-bg);
+            color: var(--text-dark);
+            line-height: 1.6;
+            padding-bottom: 80px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-green));
+            color: white;
+            padding: 3rem 2rem;
+            border-radius: 0 0 20px 20px;
+            text-align: center;
+            margin-bottom: 2.5rem;
+            box-shadow: 0 6px 18px var(--shadow);
+        }
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 1rem;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .chapter-title {
+            color: var(--primary-blue);
+            border-left: 6px solid var(--primary-orange);
+            padding-left: 1rem;
+            margin: 2.5rem 0 1.5rem;
+            font-size: 1.8rem;
+        }
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 6px 15px var(--shadow);
+            border-top: 6px solid var(--primary-yellow);
+            transition: transform 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        h2 {
+            color: var(--primary-green);
+            margin-bottom: 1.2rem;
+            font-size: 1.6rem;
+        }
+        h3 {
+            color: var(--primary-orange);
+            margin: 1.5rem 0 0.8rem;
+            font-size: 1.3rem;
+        }
+        p {
+            margin-bottom: 1rem;
+            color: var(--text-light);
+        }
+        ul, ol {
+            padding-left: 1.8rem;
+            margin-bottom: 1.5rem;
+            color: var(--text-light);
+        }
+        li {
+            margin-bottom: 0.5rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px var(--shadow);
+        }
+        th {
+            background-color: var(--primary-blue);
+            color: white;
+            padding: 1rem;
+            text-align: left;
+        }
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        tr:hover {
+            background-color: #e3f2fd;
+        }
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 1.5rem;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            font-family: 'Consolas', monospace;
+            border-left: 5px solid var(--primary-red);
+        }
+        code {
+            font-family: 'Consolas', monospace;
+            background: #f0f4f8;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: var(--primary-red);
+        }
+        .svg-container {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin: 2rem 0;
+            display: flex;
+            justify-content: center;
+            box-shadow: 0 4px 10px var(--shadow);
+        }
+        .architecture-svg {
+            width: 100%;
+            max-width: 900px;
+            height: auto;
+        }
+        .tip-box {
+            background: #E8F5E9;
+            border-left: 5px solid var(--primary-green);
+            padding: 1.2rem;
+            margin: 1.5rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .warning-box {
+            background: #FFF3E0;
+            border-left: 5px solid var(--primary-orange);
+            padding: 1.2rem;
+            margin: 1.5rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+        footer {
+            background: linear-gradient(135deg, #333, #555);
+            color: white;
+            text-align: center;
+            padding: 2.5rem;
+            margin-top: 4rem;
+            border-radius: 20px 20px 0 0;
+            font-size: 1.2rem;
+            letter-spacing: 1px;
+        }
+        .keyword {
+            font-weight: bold;
+            color: var(--primary-blue);
+        }
+        .step-list {
+            counter-reset: step-counter;
+            list-style: none;
+        }
+        .step-list li {
+            counter-increment: step-counter;
+            margin-bottom: 1.2rem;
+            padding-left: 3rem;
+            position: relative;
+        }
+        .step-list li:before {
+            content: counter(step-counter);
+            background: var(--primary-yellow);
+            color: #333;
+            font-weight: bold;
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>PyTorch模型推理优化</h1>
+        <p class="subtitle">模型评估模式、推理性能基准测试、常见推理瓶颈分析</p>
+        <p>《PyTorch模型部署实战：ONNX与TensorRT全流程》· 第四章</p>
+    </header>
+
+    <div class="container">
+        <section>
+            <h2 class="chapter-title">引言：为什么需要推理优化？</h2>
+            <div class="card">
+                <p>在深度学习模型从训练到部署的完整流程中，<span class="keyword">推理优化</span>是连接研发与生产的关键桥梁。训练好的模型往往在实时性、资源消耗方面无法直接满足生产环境要求。本章将深入探讨PyTorch模型推理优化的三大核心环节：<span class="keyword">模型评估模式</span>、<span class="keyword">推理性能基准测试</span>与<span class="keyword">常见推理瓶颈分析</span>，为后续的ONNX转换与TensorRT加速打下坚实基础。</p>
+            </div>
+        </section>
+
+        <section>
+            <h2 class="chapter-title">1. 模型评估模式 (Evaluation Mode)</h2>
+            <div class="card">
+                <h3>1.1 训练模式 vs 评估模式</h3>
+                <p>PyTorch模型有两种基本模式：<code>model.train()</code> 和 <code>model.eval()</code>。切换模式会影响特定层的行为：</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>层类型</th>
+                            <th>训练模式行为</th>
+                            <th>评估模式行为</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Dropout</strong></td>
+                            <td>随机丢弃神经元，防止过拟合</td>
+                            <td>所有神经元激活，乘以保留概率</td>
+                        </tr>
+                        <tr>
+                            <td><strong>BatchNorm</strong></td>
+                            <td>使用批次统计量，更新运行均值/方差</td>
+                            <td>使用固定的运行统计量，不更新</td>
+                        </tr>
+                        <tr>
+                            <td><strong>InstanceNorm</strong></td>
+                            <td>类似BatchNorm，但针对每个样本</td>
+                            <td>使用训练好的参数，不更新统计量</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>1.2 正确设置评估模式</h3>
+                <p>推理前必须切换到评估模式，否则会导致结果不一致和性能下降：</p>
+<pre><code>import torch
+import torchvision.models as models
+
+# 加载预训练模型
+model = models.resnet50(pretrained=True)
+
+# 切换到评估模式（关键步骤！）
+model.eval()
+
+# 同时关闭梯度计算，减少内存开销
+with torch.no_grad():
+    input_tensor = torch.randn(1, 3, 224, 224)
+    output = model(input_tensor)
+    print(f"输出形状: {output.shape}")</code></pre>
+
+                <div class="tip-box">
+                    <strong>最佳实践提示：</strong> 使用<code>torch.no_grad()</code>上下文管理器可以禁用梯度计算，显著减少内存占用并加速推理。
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2 class="chapter-title">2. 推理性能基准测试</h2>
+            <div class="card">
+                <h3>2.1 性能指标定义</h3>
+                <ul>
+                    <li><span class="keyword">延迟 (Latency)</span>: 单次推理所需时间（毫秒）</li>
+                    <li><span class="keyword">吞吐量 (Throughput)</span>: 单位时间处理的样本数（样本/秒）</li>
+                    <li><span class="keyword">内存占用 (Memory Footprint)</span>: 推理时占用的显存/内存</li>
+                    <li><span class="keyword">计算量 (FLOPs)</span>: 浮点运算次数</li>
+                </ul>
+
+                <h3>2.2 基准测试代码实现</h3>
+<pre><code>import time
+import torch
+import numpy as np
+
+def benchmark_model(model, input_shape=(1, 3, 224, 224), device='cuda', num_warmup=50, num_iterations=200):
+    """
+    综合性能基准测试函数
+    """
+    model.to(device)
+    model.eval()
+    
+    # 准备输入
+    dummy_input = torch.randn(input_shape).to(device)
+    
+    # 预热阶段（避免冷启动影响）
+    print("预热阶段...")
+    with torch.no_grad():
+        for _ in range(num_warmup):
+            _ = model(dummy_input)
+    
+    # 同步GPU
+    if device == 'cuda':
+        torch.cuda.synchronize()
+    
+    # 正式测试
+    print("正式测试...")
+    latencies = []
+    
+    with torch.no_grad():
+        for _ in range(num_iterations):
+            start_time = time.perf_counter()
+            
+            _ = model(dummy_input)
+            
+            if device == 'cuda':
+                torch.cuda.synchronize()
+            
+            end_time = time.perf_counter()
+            latencies.append((end_time - start_time) * 1000)  # 转换为毫秒
+    
+    # 统计结果
+    latencies = np.array(latencies)
+    stats = {
+        '平均延迟 (ms)': np.mean(latencies),
+        '延迟标准差 (ms)': np.std(latencies),
+        'P95延迟 (ms)': np.percentile(latencies, 95),
+        '最小延迟 (ms)': np.min(latencies),
+        '最大延迟 (ms)': np.max(latencies),
+        '吞吐量 (样本/秒)': 1000 / np.mean(latencies) * input_shape[0]
+    }
+    
+    return stats
+
+# 使用示例
+if __name__ == "__main__":
+    model = models.resnet50(pretrained=True)
+    stats = benchmark_model(model, device='cuda')
+    
+    print("\n=== 性能测试结果 ===")
+    for key, value in stats.items():
+        print(f"{key}: {value:.2f}")</code></pre>
+
+                <h3>2.3 测试结果可视化分析</h3>
+                <div class="svg-container">
+                    <svg class="architecture-svg" viewBox="0 0 900 400" xmlns="http://www.w3.org/2000/svg">
+                        <!-- 背景 -->
+                        <rect width="900" height="400" fill="#F9F7F3" rx="10"/>
+                        
+                        <!-- 标题 -->
+                        <text x="450" y="40" text-anchor="middle" font-size="20" font-weight="bold" fill="#4A90E2">推理性能基准测试结果分析</text>
+                        
+                        <!-- 延迟分布图 -->
+                        <text x="100" y="80" font-size="16" fill="#333">延迟分布 (毫秒)</text>
+                        <line x1="50" y1="350" x2="400" y2="350" stroke="#666" stroke-width="2"/>
+                        <line x1="50" y1="350" x2="50" y2="100" stroke="#666" stroke-width="2"/>
+                        
+                        <!-- 柱状图 -->
+                        <rect x="80" y="250" width="40" height="100" fill="#4A90E2" rx="3"/>
+                        <text x="100" y="245" text-anchor="middle" font-size="12" fill="#333">平均</text>
+                        
+                        <rect x="140" y="220" width="40" height="130" fill="#7CB342" rx="3"/>
+                        <text x="160" y="215" text-anchor="middle" font-size="12" fill="#333">P95</text>
+                        
+                        <rect x="200" y="200" width="40" height="150" fill="#FF9800" rx="3"/>
+                        <text x="220" y="195" text-anchor="middle" font-size="12" fill="#333">最大</text>
+                        
+                        <rect x="260" y="280" width="40" height="70" fill="#EF5350" rx="3"/>
+                        <text x="280" y="275" text-anchor="middle" font-size="12" fill="#333">最小</text>
+                        
+                        <!-- 性能指标表 -->
+                        <rect x="450" y="80" width="400" height="280" fill="white" stroke="#4A90E2" stroke-width="2" rx="8"/>
+                        <text x="650" y="110" text-anchor="middle" font-size="18" font-weight="bold" fill="#333">性能指标汇总</text>
+                        
+                        <!-- 表格内容 -->
+                        <line x1="470" y1="140" x2="830" y2="140" stroke="#DDD" stroke-width="1"/>
+                        
+                        <text x="480" y="165" font-size="14" fill="#333">平均延迟:</text>
+                        <text x="700" y="165" font-size="14" font-weight="bold" fill="#4A90E2">15.3 ms</text>
+                        
+                        <text x="480" y="195" font-size="14" fill="#333">吞吐量:</text>
+                        <text x="700" y="195" font-size="14" font-weight="bold" fill="#7CB342">65.4 样本/秒</text>
+                        
+                        <text x="480" y="225" font-size="14" fill="#333">P95延迟:</text>
+                        <text x="700" y="225" font-size="14" font-weight="bold" fill="#FF9800">18.7 ms</text>
+                        
+                        <text x="480" y="255" font-size="14" fill="#333">内存占用:</text>
+                        <text x="700" y="255" font-size="14" font-weight="bold" fill="#EF5350">1.2 GB</text>
+                        
+                        <text x="480" y="285" font-size="14" fill="#333">计算量 (FLOPs):</text>
+                        <text x="700" y="285" font-size="14" font-weight="bold" fill="#333">4.1 G</text>
+                        
+                        <!-- 结论 -->
+                        <rect x="100" y="370" width="700" height="20" fill="#E8F5E9" rx="4"/>
+                        <text x="450" y="385" text-anchor="middle" font-size="12" fill="#333">结论：模型满足实时性要求（延迟＜30ms），但内存占用较高，需进一步优化</text>
+                    </svg>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2 class="chapter-title">3. 常见推理瓶颈分析</h2>
+            <div class="card">
+                <h3>3.1 瓶颈分类与识别</h3>
+                <ol class="step-list">
+                    <li><span class="keyword">计算瓶颈 (Compute-Bound)</span>: GPU计算单元利用率高，但计算任务繁重</li>
+                    <li><span class="keyword">内存瓶颈 (Memory-Bound)</span>: 频繁的数据传输，内存带宽成为限制</li>
+                    <li><span class="keyword">I/O瓶颈 (I/O-Bound)</span>: 数据加载、预处理速度跟不上计算速度</li>
+                    <li><span class="keyword">同步瓶颈 (Synchronization-Bound)</span>: CPU-GPU同步等待时间过长</li>
+                </ol>
+
+                <h3>3.2 瓶颈诊断工具与方法</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>工具</th>
+                            <th>用途</th>
+                            <th>关键命令/方法</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>PyTorch Profiler</strong></td>
+                            <td>PyTorch内置性能分析</td>
+                            <td><code>torch.profiler</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>NVIDIA Nsight Systems</strong></td>
+                            <td>系统级性能分析</td>
+                            <td>nsys profile</td>
+                        </tr>
+                        <tr>
+                            <td><strong>NVIDIA DLProf</strong></td>
+                            <td>深度学习专用分析</td>
+                            <td>dlprof</td>
+                        </tr>
+                        <tr>
+                            <td><strong>手动计时</strong></td>
+                            <td>快速定位瓶颈模块</td>
+                            <td>分段<code>time.perf_counter()</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>3.3 瓶颈分析代码示例</h3>
+<pre><code>import torch
+import torch.profiler as profiler
+
+def profile_model_inference(model, input_shape=(1, 3, 224, 224)):
+    """
+    使用PyTorch Profiler进行详细性能分析
+    """
+    model.eval()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    
+    dummy_input = torch.randn(input_shape).to(device)
+    
+    # 配置Profiler
+    with profiler.profile(
+        activities=[
+            profiler.ProfilerActivity.CPU,
+            profiler.ProfilerActivity.CUDA
+        ],
+        schedule=profiler.schedule(
+            wait=1,  # 跳过前1次迭代
+            warmup=2,  # 预热2次迭代
+            active=3,  # 分析3次迭代
+            repeat=1
+        ),
+        on_trace_ready=profiler.tensorboard_trace_handler('./logs'),
+        record_shapes=True,
+        profile_memory=True,
+        with_stack=True
+    ) as prof:
+        with torch.no_grad():
+            for _ in range(6):  # 总迭代次数 = wait + warmup + active
+                output = model(dummy_input)
+                prof.step()
+    
+    # 打印关键统计信息
+    print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
+    
+    # 分析建议
+    print("\n=== 瓶颈分析建议 ===")
+    
+    # 检查GPU利用率
+    total_cuda_time = sum([event.cuda_time_total for event in prof.key_averages()])
+    total_cpu_time = sum([event.cpu_time_total for event in prof.key_averages()])
+    
+    if total_cuda_time > 0:
+        utilization = total_cuda_time / (total_cpu_time + total_cuda_time) * 100
+        print(f"GPU利用率: {utilization:.1f}%")
+        
+        if utilization < 60:
+            print("⚠️  GPU利用率偏低，可能存在CPU瓶颈或同步问题")
+        elif utilization > 90:
+            print("✅  GPU利用率良好，可能是计算瓶颈")
+    
+    # 检查内存操作
+    memory_events = [e for e in prof.key_averages() if 'memcpy' in e.key or 'memset' in e.key]
+    if memory_events:
+        print(f"⚠️  检测到 {len(memory_events)} 个内存操作，可能存在内存瓶颈")
+
+# 使用示例
+if __name__ == "__main__":
+    model = models.resnet50(pretrained=True)
+    profile_model_inference(model)</code></pre>
+
+                <div class="warning-box">
+                    <strong>常见问题警告：</strong> 小批量推理时，GPU可能无法完全利用，导致吞吐量低下。考虑使用动态批处理或累积多个请求后批量处理。
+                </div>
+
+                <h3>3.4 优化策略对照表</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>瓶颈类型</th>
+                            <th>症状表现</th>
+                            <th>优化策略</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>计算瓶颈</strong></td>
+                            <td>GPU利用率高，延迟稳定但较高</td>
+                            <td>算子融合、降低精度(FP16/INT8)、模型剪枝</td>
+                        </tr>
+                        <tr>
+                            <td><strong>内存瓶颈</strong></td>
+                            <td>GPU利用率波动，内存拷贝时间长</td>
+                            <td>内存复用、零拷贝、优化数据布局</td>
+                        </tr>
+                        <tr>
+                            <td><strong>I/O瓶颈</strong></td>
+                            <td>GPU等待数据，利用率周期性下降</td>
+                            <td>数据预取、异步加载、缓存优化</td>
+                        </tr>
+                        <tr>
+                            <td><strong>启动开销</strong></td>
+                            <td>首次推理特别慢，后续正常</td>
+                            <td>预热推理、模型预编译、持久化内核</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section>
+            <h2 class="chapter-title">4. 综合优化工作流</h2>
+            <div class="card">
+                <div class="svg-container">
+                    <svg class="architecture-svg" viewBox="0 0 900 500" xmlns="http://www.w3.org/2000/svg">
+                        <!-- 标题 -->
+                        <text x="450" y="40" text-anchor="middle" font-size="22" font-weight="bold" fill="#4A90E2">PyTorch模型推理优化工作流</text>
+                        
+                        <!-- 流程图 -->
+                        <rect x="100" y="80" width="160" height="60" rx="10" fill="#4A90E2" stroke="#2C6FB7" stroke-width="2"/>
+                        <text x="180" y="115" text-anchor="middle" fill="white" font-size="14" font-weight="bold">1. 设置评估模式</text>
+                        
+                        <rect x="100" y="160" width="160" height="60" rx="10" fill="#7CB342" stroke="#5A8A2A" stroke-width="2"/>
+                        <text x="180" y="195" text-anchor="middle" fill="white" font-size="14" font-weight="bold">2. 基准测试</text>
+                        
+                        <rect x="100" y="240" width="160" height="60" rx="10" fill="#FF9800" stroke="#D87C00" stroke-width="2"/>
+                        <text x="180" y="275" text-anchor="middle" fill="white" font-size="14" font-weight="bold">3. 瓶颈分析</text>
+                        
+                        <rect x="100" y="320" width="160" height="60" rx="10" fill="#EF5350" stroke="#C62828" stroke-width="2"/>
+                        <text x="180" y="355" text-anchor="middle" fill="white" font-size="14" font-weight="bold">4. 优化实施</text>
+                        
+                        <rect x="100" y="400" width="160" height="60" rx="10" fill="#9C27B0" stroke="#6A1B9A" stroke-width="2"/>
+                        <text x="180" y="435" text-anchor="middle" fill="white" font-size="14" font-weight="bold">5. 验证迭代</text>
+                        
+                        <!-- 连接箭头 -->
+                        <polyline points="180,140 180,160" fill="none" stroke="#666" stroke-width="2" marker-end="url(#arrow)"/>
+                        <polyline points="180,220 180,240" fill="none" stroke="#666" stroke-width="2" marker-end="url(#arrow)"/>
+                        <polyline points="180,300 180,320" fill="none" stroke="#666" stroke-width="2" marker-end="url(#arrow)"/>
+                        <polyline points="180,380 180,400" fill="none" stroke="#666" stroke-width="2" marker-end="url(#arrow)"/>
+                        
+                        <!-- 右侧详细说明 -->
+                        <rect x="350" y="80" width="500" height="380" fill="white" stroke="#DDD" stroke-width="2" rx="10"/>
+                        
+                        <text x="380" y="115" font-size="16" fill="#4A90E2" font-weight="bold">• model.eval() + torch.no_grad()</text>
+                        <text x="380" y="140" font-size="14" fill="#666">确保Dropout、BatchNorm等层行为正确</text>
+                        
+                        <text x="380" y="185" font-size="16" fill="#7CB342" font-weight="bold">• 延迟、吞吐量、内存测试</text>
+                        <text x="380" y="210" font-size="14" fill="#666">建立性能基线，识别异常点</text>
+                        
+                        <text x="380" y="265" font-size="16" fill="#FF9800" font-weight="bold">• 使用Profiler工具分析</text>
+                        <text x="380" y="290" font-size="14" fill="#666">定位计算/内存/I/O瓶颈</text>
+                        
+                        <text x="380" y="345" font-size="16" fill="#EF5350" font-weight="bold">• 应用针对性优化策略</text>
+                        <text x="380" y="370" font-size="14" fill="#666">算子融合、精度降低、批处理等</text>
+                        
+                        <text x="380" y="425" font-size="16" fill="#9C27B0" font-weight="bold">• 测试优化效果，迭代改进</text>
+                        <text x="380" y="450" font-size="14" fill="#666">持续监控，确保优化有效</text>
+                        
+                        <!-- 底部总结 -->
+                        <rect x="100" y="480" width="700" height="30" fill="#E3F2FD" rx="5"/>
+                        <text x="450" y="500" text-anchor="middle" font-size="14" fill="#1565C0">优化是一个迭代过程：测量 → 分析 → 优化 → 验证</text>
+                        
+                        <!-- 箭头定义 -->
+                        <defs>
+                            <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                                <path d="M0,0 L0,6 L9,3 z" fill="#666"/>
+                            </marker>
+                        </defs>
+                    </svg>
+                </div>
+                
+                <h3>4.1 优化检查清单</h3>
+                <ul>
+                    <li>✅ 是否调用了<code>model.eval()</code>？</li>
+                    <li>✅ 是否使用了<code>torch.no_grad()</code>上下文？</li>
+                    <li>✅ 是否进行了充分的预热推理？</li>
+                    <li>✅ 是否测量了P95/P99延迟而不仅仅是平均值？</li>
+                    <li>✅ 是否分析了GPU利用率和内存带宽？</li>
+                    <li>✅ 是否考虑了批处理大小对性能的影响？</li>
+                    <li>✅ 是否尝试了混合精度推理(FP16)？</li>
+                    <li>✅ 是否验证了优化后的模型精度？</li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <h2 class="chapter-title">5. 本章总结</h2>
+            <div class="card">
+                <p>PyTorch模型推理优化是部署前至关重要的准备工作。通过本章学习，我们掌握了：</p>
+                <ol>
+                    <li><span class="keyword">模型评估模式</span>的正确设置方法，确保推理时层行为正确</li>
+                    <li>全面的<span class="keyword">性能基准测试</span>技术，量化模型的延迟、吞吐量和内存占用</li>
+                    <li>系统的<span class="keyword">瓶颈分析方法</span>，使用专业工具定位性能限制因素</li>
+                    <li>针对性的<span class="keyword">优化策略</span>，解决计算、内存、I/O等不同类型的瓶颈</li>
+                </ol>
+                <p>这些知识为后续的模型转换（ONNX）和加速推理（TensorRT）奠定了坚实基础。记住：<strong>没有测量就没有优化</strong>，始终基于数据做出优化决策。</p>
+                
+                <div class="tip-box">
+                    <strong>下一章预告：</strong> 在完成PyTorch模型推理优化后，我们将进入《第5章：ONNX模型格式详解与转换实践》，学习如何将优化后的PyTorch模型转换为标准的ONNX格式，实现跨框架部署。
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <footer>
+        <p>蓝海资料掘金营 · 《PyTorch模型部署实战：ONNX与TensorRT全流程》</p>
+        <p>第四章：PyTorch模型推理优化 · 模型评估模式、推理性能基准测试、常见推理瓶颈分析</p>
+        <p style="margin-top: 1rem; font-size: 0.9rem; opacity: 0.8;">© 2023 深度学习部署专家课程 · 保留所有权利</p>
+    </footer>
+</body>
+</html>

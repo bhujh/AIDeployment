@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模型量化与压缩技术实战 - 低秩分解技术</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50; /* 青草绿 */
+            --secondary-color: #FF9800; /* 活力橙 */
+            --accent-color: #2196F3; /* 天空蓝 */
+            --light-color: #FFF9C4; /* 淡鹅黄 */
+            --background-color: #F5F5F5; /* 浅灰背景 */
+            --text-color: #333333;
+            --border-color: #BBDEFB; /* 浅蓝边框 */
+        }
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            line-height: 1.8;
+            color: var(--text-color);
+            background-color: var(--background-color);
+            margin: 0;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .container {
+            background-color: white;
+            border: double 8px var(--border-color);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        .container::before {
+            content: "";
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            border: double 4px var(--secondary-color);
+            border-radius: 20px;
+            pointer-events: none;
+            z-index: -1;
+        }
+        header {
+            text-align: center;
+            padding-bottom: 25px;
+            border-bottom: 3px dashed var(--primary-color);
+            margin-bottom: 30px;
+            background: linear-gradient(to right, var(--light-color), white);
+            padding: 20px;
+            border-radius: 10px;
+        }
+        h1 {
+            color: var(--primary-color);
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: var(--accent-color);
+            border-left: 5px solid var(--secondary-color);
+            padding-left: 15px;
+            margin-top: 40px;
+            font-size: 1.8em;
+        }
+        h3 {
+            color: var(--secondary-color);
+            margin-top: 25px;
+            font-size: 1.4em;
+        }
+        .subtitle {
+            color: var(--secondary-color);
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        .content-section {
+            margin-bottom: 40px;
+            padding: 20px;
+            border-radius: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #e0e0e0;
+        }
+        .highlight-box {
+            background-color: var(--light-color);
+            border-left: 5px solid var(--primary-color);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 10px 10px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        }
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 12px 15px;
+            text-align: left;
+        }
+        th {
+            background-color: var(--accent-color);
+            color: white;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f9ff;
+        }
+        ul, ol {
+            padding-left: 25px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .code-block {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            border-left: 5px solid var(--secondary-color);
+        }
+        .svg-container {
+            text-align: center;
+            margin: 30px 0;
+            padding: 15px;
+            background-color: white;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+        }
+        .comparison-table {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin: 30px 0;
+        }
+        .comparison-item {
+            flex: 1;
+            min-width: 250px;
+            margin: 10px;
+            padding: 20px;
+            border-radius: 10px;
+            background-color: white;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border-top: 5px solid var(--primary-color);
+        }
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 3px double var(--primary-color);
+            color: #666;
+            font-size: 0.9em;
+            background-color: #f0f8ff;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .footer-text {
+            font-weight: bold;
+            color: var(--accent-color);
+            font-size: 1.1em;
+        }
+        .decorative-line {
+            height: 5px;
+            background: linear-gradient(to right, var(--primary-color), var(--secondary-color), var(--accent-color));
+            margin: 30px 0;
+            border-radius: 5px;
+        }
+        .key-point {
+            background-color: #E8F5E9;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid var(--primary-color);
+        }
+        .formula {
+            font-family: 'Cambria Math', serif;
+            text-align: center;
+            font-size: 1.2em;
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>模型量化与压缩技术实战</h1>
+            <div class="subtitle">第十四讲：低秩分解技术</div>
+            <p>矩阵分解原理、SVD分解在模型压缩中的应用、卷积核分解、Tucker分解与CP分解</p>
+        </header>
+
+        <div class="decorative-line"></div>
+
+        <section class="content-section">
+            <h2>一、低秩分解技术概述</h2>
+            <p>低秩分解是一种重要的模型压缩技术，其核心思想是将原始的高维参数矩阵（或张量）分解为多个低维矩阵（或张量）的乘积，从而减少模型的参数量和计算量。</p>
+            
+            <div class="highlight-box">
+                <strong>核心优势：</strong>在保持模型性能基本不变的前提下，显著减少存储需求和计算复杂度，特别适用于全连接层和卷积层的压缩。
+            </div>
+
+            <div class="svg-container">
+                <svg width="100%" height="200" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#4CAF50;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#2196F3;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <rect x="50" y="80" width="100" height="100" fill="#FF9800" opacity="0.8" stroke="#333" stroke-width="2"/>
+                    <text x="100" y="75" text-anchor="middle" font-weight="bold" fill="#333">原始权重矩阵</text>
+                    <text x="100" y="110" text-anchor="middle" fill="#333">W (m×n)</text>
+                    
+                    <path d="M170 130 L230 130" stroke="#333" stroke-width="3" marker-end="url(#arrow)"/>
+                    <text x="200" y="125" text-anchor="middle" fill="#2196F3" font-weight="bold">分解</text>
+                    
+                    <rect x="250" y="80" width="60" height="100" fill="#4CAF50" opacity="0.8" stroke="#333" stroke-width="2"/>
+                    <text x="280" y="75" text-anchor="middle" font-weight="bold" fill="#333">U</text>
+                    <text x="280" y="110" text-anchor="middle" fill="#333">(m×r)</text>
+                    
+                    <text x="340" y="130" text-anchor="middle" font-size="24" fill="#333">×</text>
+                    
+                    <rect x="370" y="80" width="100" height="60" fill="#2196F3" opacity="0.8" stroke="#333" stroke-width="2"/>
+                    <text x="420" y="75" text-anchor="middle" font-weight="bold" fill="#333">V</text>
+                    <text x="420" y="110" text-anchor="middle" fill="#333">(r×n)</text>
+                    
+                    <text x="500" y="130" text-anchor="middle" font-size="20" fill="#333">(r ≪ min(m,n))</text>
+                    
+                    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,6 L9,3 z" fill="#333"/>
+                    </marker>
+                </svg>
+                <p><em>低秩分解示意图：将大型矩阵分解为两个较小矩阵的乘积</em></p>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>二、矩阵分解原理</h2>
+            <p>矩阵分解是将一个矩阵表示为若干矩阵乘积的技术，在机器学习中常用于降维、压缩和特征提取。</p>
+            
+            <h3>2.1 基本原理</h3>
+            <p>给定一个矩阵 \( W \in \mathbb{R}^{m \times n} \)，低秩分解旨在找到两个较小的矩阵 \( U \in \mathbb{R}^{m \times r} \) 和 \( V \in \mathbb{R}^{r \times n} \)，使得：</p>
+            
+            <div class="formula">
+                \( W \approx U \times V \)，其中 \( r \ll \min(m, n) \)
+            </div>
+            
+            <p>参数量从 \( m \times n \) 减少到 \( r \times (m + n) \)，压缩比为：</p>
+            
+            <div class="formula">
+                \( \text{压缩比} = \frac{m \times n}{r \times (m + n)} \)
+            </div>
+            
+            <div class="key-point">
+                <strong>关键点：</strong>当 \( r < \frac{m \times n}{m + n} \) 时，参数量减少，模型得到压缩。
+            </div>
+            
+            <h3>2.2 常见矩阵分解方法对比</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>分解方法</th>
+                        <th>数学形式</th>
+                        <th>主要特点</th>
+                        <th>适用场景</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>SVD分解</strong></td>
+                        <td>\( W = U \Sigma V^T \)</td>
+                        <td>最优低秩近似，正交基</td>
+                        <td>全连接层压缩，特征提取</td>
+                    </tr>
+                    <tr>
+                        <td><strong>QR分解</strong></td>
+                        <td>\( W = QR \)</td>
+                        <td>数值稳定性好</td>
+                        <td>线性方程组求解</td>
+                    </tr>
+                    <tr>
+                        <td><strong>LU分解</strong></td>
+                        <td>\( W = LU \)</td>
+                        <td>三角矩阵分解</td>
+                        <td>矩阵求逆，线性系统</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Cholesky分解</strong></td>
+                        <td>\( W = LL^T \)</td>
+                        <td>对称正定矩阵</td>
+                        <td>优化问题，协方差矩阵</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="content-section">
+            <h2>三、SVD分解在模型压缩中的应用</h2>
+            <p>奇异值分解（SVD）是低秩分解中最经典的方法，为任意矩阵提供了最优的低秩近似。</p>
+            
+            <h3>3.1 SVD分解原理</h3>
+            <p>对于任意矩阵 \( W \in \mathbb{R}^{m \times n} \)，SVD将其分解为三个矩阵的乘积：</p>
+            
+            <div class="formula">
+                \( W = U \Sigma V^T \)
+            </div>
+            
+            <p>其中：</p>
+            <ul>
+                <li>\( U \in \mathbb{R}^{m \times m} \) 是左奇异向量矩阵（正交矩阵）</li>
+                <li>\( \Sigma \in \mathbb{R}^{m \times n} \) 是对角矩阵，对角线元素为奇异值（按降序排列）</li>
+                <li>\( V \in \mathbb{R}^{n \times n} \) 是右奇异向量矩阵（正交矩阵）</li>
+            </ul>
+            
+            <div class="svg-container">
+                <svg width="100%" height="250" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="50" y="100" width="80" height="120" fill="#FF9800" opacity="0.7" stroke="#333" stroke-width="2"/>
+                    <text x="90" y="95" text-anchor="middle" font-weight="bold">W</text>
+                    <text x="90" y="170" text-anchor="middle">m×n</text>
+                    
+                    <text x="150" y="160" text-anchor="middle" font-size="30">=</text>
+                    
+                    <rect x="180" y="100" width="60" height="120" fill="#4CAF50" opacity="0.7" stroke="#333" stroke-width="2"/>
+                    <text x="210" y="95" text-anchor="middle" font-weight="bold">U</text>
+                    <text x="210" y="170" text-anchor="middle">m×m</text>
+                    
+                    <rect x="260" y="100" width="80" height="120" fill="#2196F3" opacity="0.7" stroke="#333" stroke-width="2"/>
+                    <text x="300" y="95" text-anchor="middle" font-weight="bold">Σ</text>
+                    <text x="300" y="170" text-anchor="middle">m×n</text>
+                    
+                    <rect x="360" y="100" width="60" height="120" fill="#9C27B0" opacity="0.7" stroke="#333" stroke-width="2"/>
+                    <text x="390" y="95" text-anchor="middle" font-weight="bold">Vᵀ</text>
+                    <text x="390" y="170" text-anchor="middle">n×n</text>
+                    
+                    <!-- 低秩近似 -->
+                    <rect x="50" y="200" width="80" height="30" fill="#FF9800" opacity="0.5" stroke="#333" stroke-width="1"/>
+                    <text x="90" y="220" text-anchor="middle" font-size="12">原始矩阵</text>
+                    
+                    <path d="M130 215 L180 215" stroke="#333" stroke-width="2" stroke-dasharray="5,5"/>
+                    <text x="155" y="212" text-anchor="middle" font-size="12" fill="#F44336">低秩近似</text>
+                    
+                    <rect x="180" y="200" width="40" height="30" fill="#4CAF50" opacity="0.5" stroke="#333" stroke-width="1"/>
+                    <text x="200" y="220" text-anchor="middle" font-size="12">Uₖ</text>
+                    
+                    <rect x="230" y="200" width="40" height="30" fill="#2196F3" opacity="0.5" stroke="#333" stroke-width="1"/>
+                    <text x="250" y="220" text-anchor="middle" font-size="12">Σₖ</text>
+                    
+                    <rect x="280" y="200" width="40" height="30" fill="#9C27B0" opacity="0.5" stroke="#333" stroke-width="1"/>
+                    <text x="300" y="220" text-anchor="middle" font-size="12">Vₖᵀ</text>
+                    
+                    <text x="350" y="215" text-anchor="middle" font-size="14">k ≪ min(m,n)</text>
+                </svg>
+                <p><em>SVD分解与低秩近似示意图</em></p>
+            </div>
+            
+            <h3>3.2 SVD压缩全连接层</h3>
+            <p>全连接层权重矩阵 \( W \in \mathbb{R}^{m \times n} \) 可以通过SVD进行压缩：</p>
+            
+            <ol>
+                <li>对权重矩阵 \( W \) 进行SVD分解：\( W = U \Sigma V^T \)</li>
+                <li>选择前 \( k \) 个最大的奇异值，得到近似：\( W \approx U_k \Sigma_k V_k^T \)</li>
+                <li>将原全连接层替换为两个连续的全连接层：
+                    <ul>
+                        <li>第一层：权重 \( \Sigma_k V_k^T \)，无偏置，输出维度 \( k \)</li>
+                        <li>第二层：权重 \( U_k \)，保留原偏置，输出维度 \( m \)</li>
+                    </ul>
+                </li>
+            </ol>
+            
+            <div class="code-block">
+<pre>import numpy as np
+import torch
+import torch.nn as nn
+
+def compress_fc_with_svd(fc_layer, compression_ratio=0.5):
+    """
+    使用SVD压缩全连接层
+    Args:
+        fc_layer: 全连接层 (nn.Linear)
+        compression_ratio: 压缩比例 (0-1)
+    Returns:
+        压缩后的两层网络 (nn.Sequential)
+    """
+    # 获取权重和偏置
+    W = fc_layer.weight.data.numpy()  # [m, n]
+    b = fc_layer.bias.data.numpy() if fc_layer.bias is not None else None
+    
+    # SVD分解
+    U, S, Vt = np.linalg.svd(W, full_matrices=False)
+    
+    # 计算保留的秩k
+    total_params = W.shape[0] * W.shape[1]
+    k = int(compression_ratio * min(W.shape[0], W.shape[1]))
+    
+    # 截断取前k个奇异值
+    U_k = U[:, :k]  # [m, k]
+    S_k = np.diag(S[:k])  # [k, k]
+    Vt_k = Vt[:k, :]  # [k, n]
+    
+    # 构建压缩后的两层
+    layer1 = nn.Linear(W.shape[1], k, bias=False)
+    layer2 = nn.Linear(k, W.shape[0], bias=(b is not None))
+    
+    # 设置新权重
+    layer1.weight.data = torch.from_numpy(S_k @ Vt_k).float()
+    layer2.weight.data = torch.from_numpy(U_k).float()
+    
+    if b is not None:
+        layer2.bias.data = torch.from_numpy(b).float()
+    
+    return nn.Sequential(layer1, layer2)</pre>
+            </div>
+            
+            <div class="key-point">
+                <strong>压缩效果：</strong>当 \( k < \frac{m \times n}{m + n} \) 时，参数量减少，计算量降低，但可能带来轻微精度损失。
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>四、卷积核分解</h2>
+            <p>卷积核分解是将卷积层的四维权重张量分解为多个低秩张量的技术，显著减少卷积计算量。</p>
+            
+            <h3>4.1 卷积核张量表示</h3>
+            <p>标准卷积层的权重张量为 \( \mathcal{W} \in \mathbb{R}^{C_{out} \times C_{in} \times K \times K} \)，其中：</p>
+            <ul>
+                <li>\( C_{out} \)：输出通道数</li>
+                <li>\( C_{in} \)：输入通道数</li>
+                <li>\( K \)：卷积核大小</li>
+            </ul>
+            
+            <h3>4.2 空间分解（Depthwise Separable Convolution）</h3>
+            <p>将标准卷积分解为深度卷积和逐点卷积：</p>
+            
+            <div class="formula">
+                \( \text{标准卷积} \Rightarrow \text{深度卷积} (K \times K \times 1) + \text{逐点卷积} (1 \times 1 \times C_{out}) \)
+            </div>
+            
+            <div class="svg-container">
+                <svg width="100%" height="300" xmlns="http://www.w3.org/2000/svg">
+                    <!-- 标准卷积 -->
+                    <rect x="50" y="50" width="120" height="80" fill="#FF9800" opacity="0.7" stroke="#333" stroke-width="2"/>
+                    <text x="110" y="45" text-anchor="middle" font-weight="bold">标准卷积</text>
+                    <text x="110" y="90" text-anchor="middle">Cₒᵤₜ×Cᵢₙ×K×K</text>
+                    
+                    <path d="M170 90 L220 90" stroke="#333" stroke-width="3" marker-end="url(#arrow2)"/>
+                    <text x="195" y="85" text-anchor="middle" fill="#F44336" font-size="14">分解</text>
+                    
+                    <!-- 分解后 -->
+                    <rect x="230" y="30" width="100" height="50" fill="#4CAF50" opacity="0.7" stroke="#333" stroke-width="2"/>
+                    <text x="280" y="25" text-anchor="middle" font-weight="bold">深度卷积</text>
+                    <text x="280" y="55" text-anchor="middle">Cᵢₙ×K×K×1</text>
+                    
+                    <text x="280" y="85" text-anchor="middle" font-size="20">+</text>
+                    
+                    <rect x="230" y="100" width="100" height="50" fill="#2196F3" opacity="0.7" stroke="#333" stroke-width="2"/>
+                    <text x="280" y="95" text-anchor="middle" font-weight="bold">逐点卷积</text>
+                    <text x="280" y="125" text-anchor="middle">Cₒᵤₜ×1×1×Cᵢₙ</text>
+                    
+                    <!-- 计算量对比 -->
+                    <rect x="50" y="180" width="400" height="100" fill="#FFF9C4" opacity="0.9" stroke="#333" stroke-width="2" rx="5"/>
+                    <text x="250" y="200" text-anchor="middle" font-weight="bold">计算量对比</text>
+                    
+                    <text x="100" y="230" text-anchor="middle">标准卷积：</text>
+                    <text x="100" y="250" text-anchor="middle" fill="#F44336">Cₒᵤₜ × Cᵢₙ × K² × H × W</text>
+                    
+                    <text x="300" y="230" text-anchor="middle">分解后：</text>
+                    <text x="300" y="250" text-anchor="middle" fill="#4CAF50">Cᵢₙ × K² × H × W + Cₒᵤₜ × Cᵢₙ × H × W</text>
+                    
+                    <text x="250" y="270" text-anchor="middle" font-size="14">压缩比 ≈ 1/K² + 1/Cₒᵤₜ</text>
+                    
+                    <marker id="arrow2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,6 L9,3 z" fill="#333"/>
+                    </marker>
+                </svg>
+                <p><em>卷积核空间分解示意图</em></p>
+            </div>
+            
+            <h3>4.3 通道分解（CP分解）</h3>
+            <p>将四维卷积核分解为多个一维向量的外积和：</p>
+            
+            <div class="formula">
+                \( \mathcal{W} \approx \sum_{r=1}^{R} \lambda_r \cdot u_r^{(out)} \circ u_r^{(in)} \circ v_r^{(h)} \circ v_r^{(w)} \)
+            </div>
+            
+            <div class="code-block">
+<pre>import torch
+import torch.nn as nn
+
+class CPDecomposedConv(nn.Module):
+    """CP分解卷积实现"""
+    def __init__(self, in_channels, out_channels, kernel_size, rank_ratio=0.25):
+        super(CPDecomposedConv, self).__init__()
+        self.rank = int(in_channels * rank_ratio)
+        
+        # 分解后的四个因子矩阵
+        self.U_out = nn.Parameter(torch.randn(out_channels, self.rank))
+        self.U_in = nn.Parameter(torch.randn(in_channels, self.rank))
+        self.V_h = nn.Parameter(torch.randn(kernel_size, self.rank))
+        self.V_w = nn.Parameter(torch.randn(kernel_size, self.rank))
+        self.lambdas = nn.Parameter(torch.ones(self.rank))
+        
+        # 偏置项
+        self.bias = nn.Parameter(torch.zeros(out_channels))
+        
+    def forward(self, x):
+        # 从因子矩阵重建卷积核
+        batch_size, in_ch, H, W = x.shape
+        
+        # 重建卷积核 [out_channels, in_channels, kernel_size, kernel_size]
+        kernel = torch.einsum('or,ir,hr,wr->oihw',
+                              self.U_out * self.lambdas,
+                              self.U_in,
+                              self.V_h,
+                              self.V_w)
+        
+        # 执行卷积
+        return nn.functional.conv2d(x, kernel, bias=self.bias, padding=1)</pre>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <h2>五、Tucker分解与CP分解</h2>
+            <p>对于高阶张量（如卷积核），Tucker分解和CP分解是两种重要的低秩分解方法。</p>
+            
+            <div class="comparison-table">
+                <div class="comparison-item">
+                    <h3>Tucker分解</h3>
+                    <p><strong>数学形式：</strong></p>
+                    <div class="formula" style="font-size: 1em;">
+                        \( \mathcal{W} \approx \mathcal{G} \times_1 U^{(1)} \times_2 U^{(2)} \times_3 U^{(3)} \times_4 U^{(4)} \)
+                    </div>
+                    <ul>
+                        <li>核心张量 \( \mathcal{G} \) 控制各模式间的交互</li>
+                        <li>因子矩阵 \( U^{(i)} \) 是正交矩阵</li>
+                        <li>灵活性高，可控制每个模式的秩</li>
+                        <li>适用于卷积核分解</li>
+                    </ul>
+                </div>
+                
+                <div class="comparison-item">
+                    <h3>CP分解</h3>
+                    <p><strong>数学形式：</strong></p>
+                    <div class="formula" style="font-size: 1em;">
+                        \( \mathcal{W} \approx \sum_{r=1}^{R} \lambda_r u_r^{(1)} \circ u_r^{(2)} \circ u_r^{(3)} \circ u_r^{(4)} \)
+                    </div>
+                    <ul>
+                        <li>秩为R的分解</li>
+                        <li>每个分量是秩一张量</li>
+                        <li>参数量更少</li>
+                        <li>计算相对简单</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <h3>5.1 Tucker分解在卷积神经网络中的应用</h3>
+            <p>Tucker分解特别适合压缩卷积层，通过调整核心张量的大小控制压缩率：</p>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>分解维度</th>
+                        <th>原始大小</th>
+                        <th>Tucker分解后</th>
+                        <th>参数量减少</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>输出通道</td>
+                        <td>\( C_{out} \)</td>
+                        <td>\( R_{out} \)</td>
+                        <td>\( C_{out}/R_{out} \)倍</td>
+                    </tr>
+                    <tr>
+                        <td>输入通道</td>
+                        <td>\( C_{in} \)</td>
+                        <td>\( R_{in} \)</td>
+                        <td>\( C_{in}/R_{in} \)倍</td>
+                    </tr>
+                    <tr>
+                        <td>空间高度</td>
+                        <td>\( K \)</td>
+                        <td>\( R_h \)</td>
+                        <td>\( K/R_h \)倍</td>
+                    </tr>
+                    <tr>
+                        <td>空间宽度</td>
+                        <td>\( K \)</td>
+                        <td>\( R_w \)</td>
+                        <td>\( K/R_w \)倍</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div class="key-point">
+                <strong>实践建议：</strong>对于卷积层压缩，通常先进行Tucker分解，再进行微调训练，以恢复模型精度。
+            </div>
+            
+            <h3>5.2 低秩分解技术对比总结</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>技术</th>
+                        <th>适用层类型</th>
+                        <th>压缩效果</th>
+                        <th>精度损失</th>
+                        <th>实现难度</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>SVD分解</strong></td>
+                        <td>全连接层</td>
+                        <td>高（5-10倍）</td>
+                        <td>低（微调可恢复）</td>
+                        <td>低</td>
+                    </tr>
+                    <tr>
+                        <td><strong>卷积核空间分解</strong></td>
+                        <td>卷积层</td>
+                        <td>中（2-5倍）</td>
+                        <td>中</td>
+                        <td>中</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Tucker分解</strong></td>
+                        <td>卷积层</td>
+                        <td>高（5-10倍）</td>
+                        <td>中低</td>
+                        <td>高</td>
+                    </tr>
+                    <tr>
+                        <td><strong>CP分解</strong></td>
+                        <td>卷积层</td>
+                        <td>很高（10+倍）</td>
+                        <td>高</td>
+                        <td>高</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="content-section">
+            <h2>六、实践建议与总结</h2>
+            
+            <h3>6.1 低秩分解实践流程</h3>
+            <ol>
+                <li><strong>分析模型结构：</strong>识别适合压缩的全连接层和卷积层</li>
+                <li><strong>选择分解方法：</strong>
+                    <ul>
+                        <li>全连接层：优先使用SVD分解</li>
+                        <li>卷积层：根据需求选择空间分解、Tucker或CP分解</li>
+                    </ul>
+                </li>
+                <li><strong>确定压缩率：</strong>基于目标部署平台和精度要求</li>
+                <li><strong>执行分解：</strong>对权重进行分解，重构网络结构</li>
+                <li><strong>微调训练：</strong>使用原始训练数据对压缩后模型进行微调</li>
+                <li><strong>评估验证：</strong>测试压缩后模型的精度和推理速度</li>
+            </ol>
+            
+            <h3>6.2 注意事项</h3>
+            <div class="highlight-box">
+                <ul>
+                    <li>低秩分解会改变网络结构，需要重新设计模型架构</li>
+                    <li>分解后必须进行微调训练以恢复精度</li>
+                    <li>不同层对压缩的敏感度不同，需要逐层分析</li>
+                    <li>结合其他压缩技术（如剪枝、量化）可获得更好效果</li>
+                    <li>实际部署时需考虑硬件对分解后计算的支持</li>
+                </ul>
+            </div>
+            
+            <h3>6.3 未来发展趋势</h3>
+            <ul>
+                <li><strong>自动化压缩：</strong>基于强化学习自动选择分解方法和压缩率</li>
+                <li><strong>硬件感知分解：</strong>针对特定硬件架构优化分解策略</li>
+                <li><strong>动态低秩分解：</strong>根据输入动态调整分解结构</li>
+                <li><strong>多技术融合：</strong>低秩分解与知识蒸馏、神经架构搜索结合</li>
+            </ul>
+        </section>
+
+        <div class="decorative-line"></div>
+
+        <footer>
+            <p>《模型量化与压缩技术实战》课程系列</p>
+            <p class="footer-text">公众号: 蓝海资料掘金营，微信 deep3321</p>
+            <p>© 2026 深度学习工程实践. 本课程内容仅供学习交流使用.</p>
+        </footer>
+    </div>
+</body>
+</html>

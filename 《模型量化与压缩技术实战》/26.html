@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自然语言处理模型压缩实战</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50; /* 青草绿 */
+            --secondary-color: #FF9800; /* 活力橙 */
+            --accent-color: #2196F3; /* 天空蓝 */
+            --light-color: #FFF9C4; /* 淡鹅黄 */
+            --background-color: #F5F5F5; /* 浅灰背景 */
+            --text-color: #333333;
+            --border-color: #BDBDBD;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .container {
+            background-color: white;
+            border: 8px double var(--primary-color);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        .container::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            border: 4px double var(--secondary-color);
+            border-radius: 20px;
+            pointer-events: none;
+            z-index: -1;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 3px dashed var(--accent-color);
+        }
+        h1 {
+            color: var(--primary-color);
+            font-size: 2.8rem;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        .subtitle {
+            color: var(--secondary-color);
+            font-size: 1.4rem;
+            font-weight: 300;
+        }
+        h2 {
+            color: var(--accent-color);
+            border-left: 6px solid var(--secondary-color);
+            padding-left: 15px;
+            margin: 30px 0 20px;
+            font-size: 1.8rem;
+        }
+        h3 {
+            color: var(--primary-color);
+            margin: 25px 0 15px;
+            font-size: 1.4rem;
+        }
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        .highlight-box {
+            background-color: var(--light-color);
+            border-left: 5px solid var(--secondary-color);
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 0 10px 10px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        th, td {
+            border: 2px solid var(--border-color);
+            padding: 15px;
+            text-align: left;
+        }
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 600;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        ul, ol {
+            margin-left: 25px;
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .code-block {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            border-left: 5px solid var(--secondary-color);
+        }
+        .svg-container {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+        }
+        .architecture {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid var(--accent-color);
+            margin: 30px 0;
+        }
+        .technique-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+        .technique-card {
+            background: linear-gradient(145deg, #ffffff, #f0f0f0);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.08);
+            border-top: 6px solid var(--accent-color);
+            transition: transform 0.3s;
+        }
+        .technique-card:hover {
+            transform: translateY(-5px);
+        }
+        .technique-card h4 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 25px;
+            border-top: 3px double var(--primary-color);
+            color: #666;
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+        .footer-content {
+            background-color: var(--light-color);
+            padding: 15px;
+            border-radius: 10px;
+            display: inline-block;
+        }
+        .keyword {
+            background-color: #E3F2FD;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            color: var(--accent-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>自然语言处理模型压缩实战</h1>
+            <p class="subtitle">第26课：BERT等预训练模型压缩、词嵌入量化、注意力机制剪枝、蒸馏TinyBERT实战</p>
+        </header>
+
+        <section>
+            <h2>课程概述</h2>
+            <p>随着BERT、GPT等大规模预训练模型在自然语言处理任务中取得突破性进展，其庞大的参数量与计算需求成为实际部署的主要障碍。本课程深入探讨NLP模型压缩的核心技术，旨在将大模型“瘦身”为高效、轻量且保持高性能的实用模型。</p>
+            
+            <div class="highlight-box">
+                <p><strong>学习目标：</strong>掌握BERT等预训练模型的四大压缩技术：量化、剪枝、知识蒸馏与参数共享，并能够通过TinyBERT实战项目完成从理论到实践的转化。</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>核心技术概览</h2>
+            <div class="technique-grid">
+                <div class="technique-card">
+                    <h4>预训练模型压缩</h4>
+                    <p>针对BERT、RoBERTa等模型，通过结构化剪枝、层丢弃等方法减少模型深度与宽度，显著降低计算开销。</p>
+                </div>
+                <div class="technique-card">
+                    <h4>词嵌入量化</h4>
+                    <p>将浮点型词向量（如FP32）转换为低精度表示（如INT8），减少存储与内存带宽，加速推理。</p>
+                </div>
+                <div class="technique-card">
+                    <h4>注意力机制剪枝</h4>
+                    <p>识别并移除注意力头中的冗余连接，保留关键语义信息，提升自注意力层的计算效率。</p>
+                </div>
+                <div class="technique-card">
+                    <h4>知识蒸馏 (TinyBERT)</h4>
+                    <p>将大型“教师模型”的知识迁移至小型“学生模型”，在保持性能的同时大幅压缩模型规模。</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="architecture">
+            <h2>NLP模型压缩技术架构图</h2>
+            <div class="svg-container">
+                <svg width="800" height="400" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="50" y="50" width="700" height="300" rx="10" fill="#FFF9C4" stroke="#FF9800" stroke-width="3"/>
+                    
+                    <rect x="100" y="100" width="150" height="60" rx="8" fill="#4CAF50" stroke="#2E7D32" stroke-width="2"/>
+                    <text x="175" y="135" text-anchor="middle" fill="white" font-weight="bold" font-size="16">原始大模型</text>
+                    
+                    <rect x="300" y="100" width="200" height="60" rx="8" fill="#2196F3" stroke="#1565C0" stroke-width="2"/>
+                    <text x="400" y="135" text-anchor="middle" fill="white" font-weight="bold" font-size="16">压缩技术引擎</text>
+                    
+                    <rect x="550" y="100" width="150" height="60" rx="8" fill="#FF9800" stroke="#EF6C00" stroke-width="2"/>
+                    <text x="625" y="135" text-anchor="middle" fill="white" font-weight="bold" font-size="16">轻量小模型</text>
+                    
+                    <line x1="250" y1="130" x2="300" y2="130" stroke="#4CAF50" stroke-width="3" marker-end="url(#arrow)"/>
+                    <line x1="500" y1="130" x2="550" y2="130" stroke="#2196F3" stroke-width="3" marker-end="url(#arrow)"/>
+                    
+                    <circle cx="400" y="220" r="50" fill="#E3F2FD" stroke="#2196F3" stroke-width="3"/>
+                    <text x="400" y="225" text-anchor="middle" fill="#1565C0" font-weight="bold" font-size="14">压缩技术</text>
+                    
+                    <text x="400" y="250" text-anchor="middle" fill="#333" font-size="12">量化·剪枝·蒸馏·共享</text>
+                    
+                    <line x1="350" y1="170" x2="380" y2="200" stroke="#666" stroke-width="2" stroke-dasharray="5,5"/>
+                    <line x1="450" y1="170" x2="420" y2="200" stroke="#666" stroke-width="2" stroke-dasharray="5,5"/>
+                    
+                    <defs>
+                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" fill="#4CAF50"/>
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+        </section>
+
+        <section>
+            <h2>关键技术详解</h2>
+            
+            <h3>1. 预训练模型压缩方法对比</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>方法</th>
+                        <th>原理</th>
+                        <th>压缩率</th>
+                        <th>性能保持</th>
+                        <th>适用场景</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="keyword">权重剪枝</span></td>
+                        <td>移除绝对值较小的权重（稀疏化）</td>
+                        <td>50%-90%</td>
+                        <td>中等</td>
+                        <td>存储受限，推理延迟要求高</td>
+                    </tr>
+                    <tr>
+                        <td><span class="keyword">层剪枝</span></td>
+                        <td>删除整个Transformer层或注意力头</td>
+                        <td>30%-70%</td>
+                        <td>中高</td>
+                        <td>计算资源有限，需要减少层数</td>
+                    </tr>
+                    <tr>
+                        <td><span class="keyword">量化</span></td>
+                        <td>降低权重/激活值精度（FP32→INT8）</td>
+                        <td>75% (存储)</td>
+                        <td>高</td>
+                        <td>移动端、嵌入式部署</td>
+                    </tr>
+                    <tr>
+                        <td><span class="keyword">知识蒸馏</span></td>
+                        <td>大模型指导小模型训练</td>
+                        <td>90%+ (参数量)</td>
+                        <td>高</td>
+                        <td>需要轻量模型且保持精度</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>2. 词嵌入量化实战示例</h3>
+            <p>词嵌入层通常占据模型总参数的相当大部分。通过量化，可将FP32浮点向量转换为INT8整数表示，显著减少内存占用。</p>
+            <div class="code-block">
+<pre><code>import torch
+import torch.nn as nn
+from torch.quantization import quantize_dynamic
+
+# 假设有一个预训练的BERT模型
+class BERTEmbedding(nn.Module):
+    def __init__(self, vocab_size=30522, hidden_size=768):
+        super().__init__()
+        self.word_embeddings = nn.Embedding(vocab_size, hidden_size)
+        self.position_embeddings = nn.Embedding(512, hidden_size)
+        self.token_type_embeddings = nn.Embedding(2, hidden_size)
+        
+    def forward(self, input_ids, token_type_ids=None, position_ids=None):
+        # 前向传播逻辑
+        pass
+
+# 动态量化词嵌入层
+model = BERTEmbedding()
+quantized_model = quantize_dynamic(
+    model,
+    {nn.Embedding},  # 指定要量化的模块类型
+    dtype=torch.qint8
+)
+
+print("原始嵌入层大小:", sum(p.numel() for p in model.parameters()))
+print("量化后嵌入层大小:", sum(p.numel() for p in quantized_model.parameters()))
+# 注意：实际存储大小会减少约75%</code></pre>
+            </div>
+
+            <h3>3. 注意力机制剪枝策略</h3>
+            <ul>
+                <li><strong>头重要性评估：</strong>基于注意力权重熵、梯度信息或对下游任务的影响评分。</li>
+                <li><strong>结构化剪枝：</strong>移除整个注意力头，保持矩阵运算的规整性。</li>
+                <li><strong>渐进式剪枝：</strong>迭代式移除最不重要的头，每轮微调以恢复性能。</li>
+                <li><strong>跨层共享：</strong>不同层共享相同的注意力头参数，减少冗余。</li>
+            </ul>
+
+            <h3>4. TinyBERT蒸馏实战核心步骤</h3>
+            <ol>
+                <li><strong>通用蒸馏：</strong>在大量文本数据上，将教师模型（BERT-base）的嵌入层、注意力矩阵、隐藏状态知识蒸馏到学生模型（TinyBERT）。</li>
+                <li><strong>任务特定蒸馏：</strong>在特定下游任务（如GLUE）数据上进一步蒸馏，提升任务性能。</li>
+                <li><strong>数据增强：</strong>使用词替换、删除等技巧扩充训练数据，提升学生模型的泛化能力。</li>
+                <li><strong>联合优化：</strong>结合注意力损失、隐藏状态损失与预测损失进行多目标训练。</li>
+            </ol>
+
+            <div class="code-block">
+<pre><code># TinyBERT蒸馏损失函数示例 (简化版)
+import torch.nn.functional as F
+
+def distillation_loss(student_logits, teacher_logits,
+                     student_hidden, teacher_hidden,
+                     student_attention, teacher_attention,
+                     labels, alpha=0.5, temperature=3.0):
+    
+    # 1. 预测蒸馏损失 (软标签)
+    soft_loss = F.kl_div(
+        F.log_softmax(student_logits / temperature, dim=-1),
+        F.softmax(teacher_logits / temperature, dim=-1),
+        reduction='batchmean'
+    ) * (temperature ** 2)
+    
+    # 2. 隐藏状态MSE损失
+    hidden_loss = F.mse_loss(student_hidden, teacher_hidden)
+    
+    # 3. 注意力矩阵MSE损失
+    attn_loss = F.mse_loss(student_attention, teacher_attention)
+    
+    # 4. 任务真实标签的交叉熵损失
+    hard_loss = F.cross_entropy(student_logits, labels)
+    
+    # 总损失 = 软标签损失 + 隐藏损失 + 注意力损失 + 硬标签损失
+    total_loss = alpha * soft_loss + 0.3 * hidden_loss + 0.2 * attn_loss + (1-alpha) * hard_loss
+    return total_loss</code></pre>
+            </div>
+        </section>
+
+        <section>
+            <h2>压缩效果评估指标</h2>
+            <div class="svg-container">
+                <svg width="600" height="300" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="50" y="50" width="500" height="200" rx="10" fill="#E8F5E9" stroke="#4CAF50" stroke-width="2"/>
+                    
+                    <circle cx="150" y="120" r="40" fill="#FFECB3" stroke="#FF9800" stroke-width="3"/>
+                    <text x="150" y="125" text-anchor="middle" fill="#333" font-weight="bold" font-size="14">模型大小</text>
+                    <text x="150" y="145" text-anchor="middle" fill="#666" font-size="12">减少70%-90%</text>
+                    
+                    <circle cx="300" y="120" r="40" fill="#E3F2FD" stroke="#2196F3" stroke-width="3"/>
+                    <text x="300" y="125" text-anchor="middle" fill="#333" font-weight="bold" font-size="14">推理速度</text>
+                    <text x="300" y="145" text-anchor="middle" fill="#666" font-size="12">提升2-10倍</text>
+                    
+                    <circle cx="450" y="120" r="40" fill="#FFCDD2" stroke="#F44336" stroke-width="3"/>
+                    <text x="450" y="125" text-anchor="middle" fill="#333" font-weight="bold" font-size="14">精度保持</text>
+                    <text x="450" y="145" text-anchor="middle" fill="#666" font-size="12">95%-99%</text>
+                    
+                    <line x1="190" y1="120" x2="260" y2="120" stroke="#666" stroke-width="2"/>
+                    <line x1="340" y1="120" x2="410" y2="120" stroke="#666" stroke-width="2"/>
+                    
+                    <text x="300" y="200" text-anchor="middle" fill="#4CAF50" font-weight="bold" font-size="16">平衡三者关系是压缩技术的核心挑战</text>
+                </svg>
+            </div>
+        </section>
+
+        <section>
+            <h2>实战建议与最佳实践</h2>
+            <div class="highlight-box">
+                <ul>
+                    <li><strong>组合使用：</strong>单一压缩技术效果有限，建议组合量化+剪枝+蒸馏以获得最佳效果。</li>
+                    <li><strong>渐进式压缩：</strong>不要一次性过度压缩，采用渐进式策略，每步压缩后微调恢复性能。</li>
+                    <li><strong>硬件感知：</strong>针对目标部署硬件（CPU、GPU、NPU）选择最合适的压缩方案。</li>
+                    <li><strong>评估全面：</strong>除了准确率，还要评估推理延迟、内存占用、能耗等实际部署指标。</li>
+                    <li><strong>开源工具：</strong>利用Hugging Face Transformers、PyTorch Quantization、NNI等工具加速开发。</li>
+                </ul>
+            </div>
+        </section>
+
+        <footer>
+            <div class="footer-content">
+                <p>公众号: 蓝海资料掘金营，微信 deep3321</p>
+                <p>© 2026 模型量化与压缩技术实战课程 · 第26课</p>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>

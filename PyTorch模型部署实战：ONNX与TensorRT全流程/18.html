@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyTorch模型部署实战：性能分析与调优</title>
+    <style>
+        :root {
+            --primary-blue: #4A90E2;
+            --secondary-green: #7ED321;
+            --accent-yellow: #F5A623;
+            --light-bg: #F0F7FF;
+            --card-bg: #FFFFFF;
+            --text-dark: #2C3E50;
+            --text-light: #7F8C8D;
+            --border-color: #DCE6F0;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background-color: var(--light-bg);
+            color: var(--text-dark);
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, var(--primary-blue), var(--secondary-green));
+            border-radius: 20px;
+            margin-bottom: 40px;
+            color: white;
+            box-shadow: 0 10px 30px rgba(74, 144, 226, 0.2);
+        }
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 15px;
+        }
+        .subtitle {
+            font-size: 1.3rem;
+            opacity: 0.9;
+        }
+        main {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+        }
+        section {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border-color);
+            transition: transform 0.3s ease;
+        }
+        section:hover {
+            transform: translateY(-5px);
+        }
+        h2 {
+            color: var(--primary-blue);
+            border-left: 6px solid var(--accent-yellow);
+            padding-left: 15px;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+        h3 {
+            color: var(--secondary-green);
+            margin: 20px 0 10px;
+        }
+        p {
+            margin-bottom: 15px;
+            color: var(--text-dark);
+        }
+        ul, ol {
+            padding-left: 25px;
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        th {
+            background-color: var(--primary-blue);
+            color: white;
+            font-weight: 600;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        pre {
+            background: #f5f7fa;
+            border-left: 4px solid var(--primary-blue);
+            padding: 20px;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            color: var(--text-dark);
+            white-space: pre-wrap;
+        }
+        code {
+            background: #eef5ff;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #d14;
+        }
+        .svg-container {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+        }
+        svg {
+            max-width: 100%;
+            height: auto;
+        }
+        .highlight {
+            background-color: #fffacd;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 25px;
+            color: var(--text-light);
+            border-top: 2px dashed var(--border-color);
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+        }
+        .tip-box {
+            background: #e8f4ff;
+            border-left: 5px solid var(--primary-blue);
+            padding: 20px;
+            border-radius: 0 10px 10px 0;
+            margin: 25px 0;
+        }
+        .step-list {
+            counter-reset: step-counter;
+            list-style: none;
+            padding-left: 0;
+        }
+        .step-list li {
+            counter-increment: step-counter;
+            margin-bottom: 25px;
+            padding-left: 50px;
+            position: relative;
+        }
+        .step-list li:before {
+            content: counter(step-counter);
+            background: var(--accent-yellow);
+            color: white;
+            font-weight: bold;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>PyTorch模型部署实战：性能分析与调优</h1>
+        <p class="subtitle">第18讲：Nsight Systems性能分析、内核瓶颈识别、内存带宽优化</p>
+    </header>
+
+    <main>
+        <section>
+            <h2>课程概述</h2>
+            <p>在模型部署的最后阶段，性能调优是确保应用达到生产级要求的关键步骤。本讲将深入介绍如何使用NVIDIA Nsight Systems进行系统级性能分析，识别计算内核瓶颈，并通过内存带宽优化技术提升推理效率。</p>
+            <div class="svg-container">
+                <svg viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="50" y="50" width="200" height="80" rx="10" fill="#4A90E2" opacity="0.8"/>
+                    <text x="150" y="95" text-anchor="middle" fill="white" font-size="18" font-weight="bold">PyTorch模型</text>
+                    <rect x="300" y="50" width="200" height="80" rx="10" fill="#7ED321" opacity="0.8"/>
+                    <text x="400" y="95" text-anchor="middle" fill="white" font-size="18" font-weight="bold">ONNX导出</text>
+                    <rect x="550" y="50" width="200" height="80" rx="10" fill="#F5A623" opacity="0.8"/>
+                    <text x="650" y="95" text-anchor="middle" fill="white" font-size="18" font-weight="bold">TensorRT优化</text>
+                    <path d="M250 90 L300 90" stroke="#2C3E50" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+                    <path d="M500 90 L550 90" stroke="#2C3E50" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+                    <rect x="200" y="180" width="400" height="80" rx="10" fill="#FF6B6B" opacity="0.9"/>
+                    <text x="400" y="230" text-anchor="middle" fill="white" font-size="20" font-weight="bold">Nsight Systems性能分析与调优</text>
+                    <defs>
+                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" fill="#2C3E50"/>
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+        </section>
+
+        <section>
+            <h2>一、Nsight Systems 性能分析</h2>
+            <p>Nsight Systems 是NVIDIA提供的系统级性能分析工具，能够可视化整个应用程序的GPU和CPU执行时间线，帮助定位性能瓶颈。</p>
+            
+            <h3>1.1 核心功能</h3>
+            <ul>
+                <li><span class="highlight">时间线分析</span>：显示CPU、GPU、内存拷贝、CUDA内核等活动的时序关系。</li>
+                <li><span class="highlight">GPU利用率统计</span>：量化计算、内存、延迟等瓶颈。</li>
+                <li><span class="highlight">API跟踪</span>：记录CUDA、cuDNN、cuBLAS等API调用。</li>
+                <li><span class="highlight">多进程/多GPU支持</span>：适用于复杂部署场景。</li>
+            </ul>
+
+            <h3>1.2 基本使用流程</h3>
+            <ol class="step-list">
+                <li><strong>数据收集</strong>：使用命令行或GUI收集应用程序的性能数据。</li>
+                <li><strong>结果可视化</strong>：在Nsight Systems GUI中加载生成的`.nsys-rep`报告文件。</li>
+                <li><strong>瓶颈识别</span>：分析时间线，找出空闲间隙、内存拷贝过长、内核执行时间异常等问题。</li>
+                <li><strong>优化迭代</strong>：根据分析结果修改代码或配置，重新收集数据验证优化效果。</li>
+            </ol>
+
+            <div class="tip-box">
+                <strong>命令行收集示例：</strong><br>
+                <code>nsys profile -o my_report --stats=true python infer.py</code> 生成包含统计信息的报告。
+            </div>
+        </section>
+
+        <section>
+            <h2>二、内核瓶颈识别与优化</h2>
+            <p>GPU内核是模型计算的核心，其性能直接影响推理速度。常见瓶颈包括计算受限、内存带宽受限、指令开销等。</p>
+
+            <h3>2.1 瓶颈类型识别</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>瓶颈类型</th>
+                        <th>特征</th>
+                        <th>优化方向</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>计算受限</strong></td>
+                        <td>GPU SM利用率高，但内存带宽利用率低</td>
+                        <td>算子融合、降低计算精度（FP16/INT8）、使用Tensor Core</td>
+                    </tr>
+                    <tr>
+                        <td><strong>内存带宽受限</strong></td>
+                        <td>内存带宽利用率高，SM利用率低</td>
+                        <td>内存访问合并、共享内存优化、增大批量大小</td>
+                    </tr>
+                    <tr>
+                        <td><strong>延迟受限</strong></td>
+                        <td>大量时间花在指令调度、同步上</td>
+                        <td>减少内核启动次数、优化线程块配置、使用流并行</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>2.2 内核优化示例</h3>
+            <p>以下是一个简单的向量加法内核，演示如何通过调整线程块大小来优化：</p>
+            <pre><code>// 原始版本：可能未充分利用SM
+__global__ void vec_add_original(float* A, float* B, float* C, int N) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < N) {
+        C[idx] = A[idx] + B[idx];
+    }
+}
+// 调用方式：<<<(N+255)/256, 256>>>
+
+// 优化版本：调整blockDim为128，增加并行块
+__global__ void vec_add_optimized(float* A, float* B, float* C, int N) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < N) {
+        C[idx] = A[idx] + B[idx];
+    }
+}
+// 调用方式：<<<(N+127)/128, 128>>>
+// 可能提升SM占用率，减少延迟</code></pre>
+        </section>
+
+        <section>
+            <h2>三、内存带宽优化策略</h2>
+            <p>在深度学习中，内存带宽往往是比计算能力更稀缺的资源。优化内存访问模式可以大幅提升性能。</p>
+
+            <h3>3.1 优化原则</h3>
+            <ul>
+                <li><strong>合并访问</strong>：确保连续的线程访问连续的内存地址。</li>
+                <li><strong>使用共享内存</strong>：作为可编程缓存，减少全局内存访问。</li>
+                <li><strong>避免bank冲突</strong>：在共享内存中合理分配数据。</li>
+                <li><strong>利用常量内存</strong>：用于只读数据（如卷积核权重）。</li>
+            </ul>
+
+            <h3>3.2 内存访问模式对比</h3>
+            <div class="svg-container">
+                <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
+                    <text x="400" y="30" text-anchor="middle" font-size="20" font-weight="bold">全局内存访问模式对比</text>
+                    <!-- 未合并访问 -->
+                    <rect x="50" y="60" width="300" height="200" rx="5" fill="#FFEAA7" stroke="#F5A623" stroke-width="2"/>
+                    <text x="200" y="90" text-anchor="middle" font-size="16" fill="#2C3E50">未合并访问（低效）</text>
+                    <rect x="80" y="120" width="240" height="20" fill="#4A90E2"/>
+                    <text x="200" y="135" text-anchor="middle" fill="white" font-size="12">全局内存</text>
+                    <circle cx="100" cy="180" r="8" fill="#FF6B6B"/>
+                    <circle cx="150" cy="180" r="8" fill="#FF6B6B"/>
+                    <circle cx="200" cy="180" r="8" fill="#FF6B6B"/>
+                    <circle cx="250" cy="180" r="8" fill="#FF6B6B"/>
+                    <line x1="100" y1="180" x2="80" y2="140" stroke="#2C3E50" stroke-width="2" stroke-dasharray="5,5"/>
+                    <line x1="150" y1="180" x2="120" y2="140" stroke="#2C3E50" stroke-width="2" stroke-dasharray="5,5"/>
+                    <line x1="200" y1="180" x2="200" y2="140" stroke="#2C3E50" stroke-width="2" stroke-dasharray="5,5"/>
+                    <line x1="250" y1="180" x2="280" y2="140" stroke="#2C3E50" stroke-width="2" stroke-dasharray="5,5"/>
+                    <text x="100" y="210" text-anchor="middle" font-size="12" fill="#2C3E50">线程0</text>
+                    <text x="150" y="210" text-anchor="middle" font-size="12" fill="#2C3E50">线程1</text>
+                    <text x="200" y="210" text-anchor="middle" font-size="12" fill="#2C3E50">线程2</text>
+                    <text x="250" y="210" text-anchor="middle" font-size="12" fill="#2C3E50">线程3</text>
+
+                    <!-- 合并访问 -->
+                    <rect x="450" y="60" width="300" height="200" rx="5" fill="#A3E4D7" stroke="#7ED321" stroke-width="2"/>
+                    <text x="600" y="90" text-anchor="middle" font-size="16" fill="#2C3E50">合并访问（高效）</text>
+                    <rect x="480" y="120" width="240" height="20" fill="#4A90E2"/>
+                    <text x="600" y="135" text-anchor="middle" fill="white" font-size="12">全局内存</text>
+                    <circle cx="500" cy="180" r="8" fill="#7ED321"/>
+                    <circle cx="550" cy="180" r="8" fill="#7ED321"/>
+                    <circle cx="600" cy="180" r="8" fill="#7ED321"/>
+                    <circle cx="650" cy="180" r="8" fill="#7ED321"/>
+                    <line x1="500" y1="180" x2="480" y2="140" stroke="#2C3E50" stroke-width="2"/>
+                    <line x1="550" y1="180" x2="500" y2="140" stroke="#2C3E50" stroke-width="2"/>
+                    <line x1="600" y1="180" x2="520" y2="140" stroke="#2C3E50" stroke-width="2"/>
+                    <line x1="650" y1="180" x2="540" y2="140" stroke="#2C3E50" stroke-width="2"/>
+                    <text x="500" y="210" text-anchor="middle" font-size="12" fill="#2C3E50">线程0</text>
+                    <text x="550" y="210" text-anchor="middle" font-size="12" fill="#2C3E50">线程1</text>
+                    <text x="600" y="210" text-anchor="middle" font-size="12" fill="#2C3E50">线程2</text>
+                    <text x="650" y="210" text-anchor="middle" font-size="12" fill="#2C3E50">线程3</text>
+                </svg>
+            </div>
+
+            <h3>3.3 实践建议</h3>
+            <ol>
+                <li>在TensorRT中启用<code>FP16</code>或<code>INT8</code>精度，减少内存占用和带宽压力。</li>
+                <li>使用<code>cudaMallocAsync</code>和流式内存分配，减少分配开销。</li>
+                <li>对于小批量推理，考虑使用固定内存（pinned memory）提升主机到设备拷贝速度。</li>
+                <li>利用Nsight Compute进行更细粒度的内存访问分析。</li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>四、性能调优工作流</h2>
+            <p>一个系统化的性能调优流程可以确保高效地发现和解决问题。</p>
+            <div class="svg-container">
+                <svg viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#4A90E2;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#7ED321;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <rect x="100" y="80" width="600" height="350" rx="20" fill="url(#grad1)" opacity="0.1" stroke="#4A90E2" stroke-width="2"/>
+                    
+                    <circle cx="400" cy="120" r="50" fill="#4A90E2"/>
+                    <text x="400" y="125" text-anchor="middle" fill="white" font-size="18" font-weight="bold">1</text>
+                    <text x="400" y="190" text-anchor="middle" font-size="16" fill="#2C3E50">基准测试</text>
+                    <text x="400" y="210" text-anchor="middle" font-size="14" fill="#7F8C8D">收集初始性能数据</text>
+
+                    <circle cx="250" cy="240" r="50" fill="#F5A623"/>
+                    <text x="250" y="245" text-anchor="middle" fill="white" font-size="18" font-weight="bold">2</text>
+                    <text x="250" y="310" text-anchor="middle" font-size="16" fill="#2C3E50">Nsight分析</text>
+                    <text x="250" y="330" text-anchor="middle" font-size="14" fill="#7F8C8D">识别系统瓶颈</text>
+
+                    <circle cx="550" cy="240" r="50" fill="#7ED321"/>
+                    <text x="550" y="245" text-anchor="middle" fill="white" font-size="18" font-weight="bold">3</text>
+                    <text x="550" y="310" text-anchor="middle" font-size="16" fill="#2C3E50">内核优化</text>
+                    <text x="550" y="330" text-anchor="middle" font-size="14" fill="#7F8C8D">调整计算与内存</text>
+
+                    <circle cx="400" cy="360" r="50" fill="#FF6B6B"/>
+                    <text x="400" y="365" text-anchor="middle" fill="white" font-size="18" font-weight="bold">4</text>
+                    <text x="400" y="430" text-anchor="middle" font-size="16" fill="#2C3E50">验证迭代</text>
+                    <text x="400" y="450" text-anchor="middle" font-size="14" fill="#7F8C8D">测试并重复优化</text>
+
+                    <path d="M400 170 L400 190" stroke="#2C3E50" stroke-width="3" fill="none" marker-end="url(#arrow2)"/>
+                    <path d="M400 190 Q400 200 280 220" stroke="#2C3E50" stroke-width="3" fill="none" marker-end="url(#arrow2)"/>
+                    <path d="M280 290 Q400 270 400 290" stroke="#2C3E50" stroke-width="3" fill="none" marker-end="url(#arrow2)"/>
+                    <path d="M400 290 Q400 300 520 290" stroke="#2C3E50" stroke-width="3" fill="none" marker-end="url(#arrow2)"/>
+                    <path d="M520 290 Q650 310 550 310" stroke="#2C3E50" stroke-width="3" fill="none" marker-end="url(#arrow2)"/>
+                    <path d="M550 290 L550 240" stroke="#2C3E50" stroke-width="3" fill="none" marker-end="url(#arrow2)"/>
+                    <path d="M250 290 L250 240" stroke="#2C3E50" stroke-width="3" fill="none" marker-end="url(#arrow2)"/>
+                    <path d="M400 410 L400 360" stroke="#2C3E50" stroke-width="3" fill="none" marker-end="url(#arrow2)"/>
+
+                    <defs>
+                        <marker id="arrow2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" fill="#2C3E50"/>
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+            <p>该工作流强调迭代优化：每次修改后重新分析，确保优化方向正确，并量化性能提升。</p>
+        </section>
+    </main>
+
+    <footer>
+        <p>蓝海资料掘金营</p>
+        <p>© 2023 PyTorch模型部署实战课程 - 性能分析与调优专题</p>
+    </footer>
+</body>
+</html>

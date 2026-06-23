@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenVINO模型部署实战 - 模型量化与压缩技术实战</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50; /* 青草绿 */
+            --secondary-color: #FF9800; /* 活力橙 */
+            --accent-color: #2196F3; /* 天空蓝 */
+            --light-color: #FFF9C4; /* 淡鹅黄 */
+            --dark-color: #333333;
+            --border-color: #8BC34A; /* 浅绿 */
+            --text-color: #2C3E50;
+            --bg-color: #F9FBE7; /* 极浅黄绿背景 */
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.7;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .double-border-container {
+            border: 3px solid var(--border-color);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            background: white;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+        .double-border-container::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            border: 2px solid var(--secondary-color);
+            border-radius: 20px;
+            z-index: -1;
+            pointer-events: none;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 4px dashed var(--primary-color);
+        }
+        h1 {
+            color: var(--primary-color);
+            font-size: 2.8em;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: var(--accent-color);
+            border-left: 6px solid var(--secondary-color);
+            padding-left: 15px;
+            margin: 30px 0 20px;
+            font-size: 1.8em;
+        }
+        h3 {
+            color: var(--secondary-color);
+            margin: 20px 0 10px;
+            font-size: 1.4em;
+        }
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        ul, ol {
+            margin-left: 25px;
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            text-align: left;
+        }
+        th {
+            background-color: var(--light-color);
+            color: var(--dark-color);
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f8fdf0;
+        }
+        .code-block {
+            background-color: #f5f5f5;
+            border-left: 5px solid var(--accent-color);
+            padding: 18px;
+            margin: 20px 0;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            color: #333;
+        }
+        .svg-container {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+        }
+        .architecture-svg {
+            width: 100%;
+            max-width: 800px;
+            height: auto;
+        }
+        .highlight {
+            background-color: var(--light-color);
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 25px;
+            border-top: 3px double var(--primary-color);
+            color: var(--dark-color);
+            font-size: 1.1em;
+            font-weight: bold;
+            background-color: #E8F5E9;
+            border-radius: 10px;
+        }
+        .tip-box {
+            background-color: #E3F2FD;
+            border: 1px solid var(--accent-color);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 25px 0;
+        }
+        .tip-title {
+            color: var(--accent-color);
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        .tip-title::before {
+            content: '💡';
+            margin-right: 10px;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>第17讲：OpenVINO模型部署实战</h1>
+        <p>《模型量化与压缩技术实战》课程核心模块</p>
+        <p style="color: var(--secondary-color); font-size: 1.2em;">掌握从模型优化到高性能推理的全流程</p>
+    </header>
+
+    <div class="double-border-container">
+        <h2>一、OpenVINO工具套件介绍</h2>
+        <p><span class="highlight">OpenVINO™</span>（Open Visual Inference & Neural network Optimization）是英特尔推出的用于优化和部署AI推理的工具套件。它旨在实现高性能、低延迟的深度学习推理，特别适用于计算机视觉任务，并支持跨英特尔硬件（CPU、iGPU、VPU等）的异构执行。</p>
+
+        <h3>核心组件</h3>
+        <ul>
+            <li><strong>模型优化器 (Model Optimizer)</strong>：将训练好的模型从框架（如TensorFlow, PyTorch, ONNX）转换为OpenVINO中间表示（IR）。</li>
+            <li><strong>推理引擎 (Inference Engine)</strong>：提供统一的API，用于在目标硬件上加载和推理IR模型。</li>
+            <li><strong>OpenVINO Runtime</strong>：轻量级运行时，用于部署优化后的模型。</li>
+            <li><strong>预训练模型库 (Open Model Zoo)</strong>：提供大量优化过的预训练模型，加速开发。</li>
+        </ul>
+
+        <div class="svg-container">
+            <svg class="architecture-svg" viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+                <rect x="50" y="50" width="150" height="60" rx="5" fill="#FFECB3" stroke="#FF9800" stroke-width="2"/>
+                <text x="125" y="85" text-anchor="middle" font-weight="bold" fill="#333">训练框架</text>
+                <text x="125" y="105" text-anchor="middle" fill="#666">(TF/PyTorch)</text>
+
+                <rect x="250" y="50" width="150" height="60" rx="5" fill="#C8E6C9" stroke="#4CAF50" stroke-width="2"/>
+                <text x="325" y="85" text-anchor="middle" font-weight="bold" fill="#333">模型优化器</text>
+                <text x="325" y="105" text-anchor="middle" fill="#666">(MO)</text>
+
+                <rect x="450" y="50" width="150" height="60" rx="5" fill="#BBDEFB" stroke="#2196F3" stroke-width="2"/>
+                <text x="525" y="85" text-anchor="middle" font-weight="bold" fill="#333">IR模型</text>
+                <text x="525" y="105" text-anchor="middle" fill="#666">(.xml/.bin)</text>
+
+                <rect x="325" y="180" width="150" height="60" rx="5" fill="#E1BEE7" stroke="#9C27B0" stroke-width="2"/>
+                <text x="400" y="215" text-anchor="middle" font-weight="bold" fill="#333">推理引擎</text>
+                <text x="400" y="235" text-anchor="middle" fill="#666">(Runtime)</text>
+
+                <rect x="50" y="180" width="150" height="60" rx="5" fill="#FFCCBC" stroke="#FF5722" stroke-width="2"/>
+                <text x="125" y="215" text-anchor="middle" font-weight="bold" fill="#333">CPU</text>
+                <rect x="250" y="180" width="150" height="60" rx="5" fill="#FFCCBC" stroke="#FF5722" stroke-width="2"/>
+                <text x="325" y="215" text-anchor="middle" font-weight="bold" fill="#333">GPU</text>
+                <rect x="450" y="180" width="150" height="60" rx="5" fill="#FFCCBC" stroke="#FF5722" stroke-width="2"/>
+                <text x="525" y="215" text-anchor="middle" font-weight="bold" fill="#333">VPU</text>
+
+                <path d="M200 80 L250 80" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+                <path d="M400 80 L450 80" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+                <path d="M525 110 L525 180" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+                <path d="M400 240 L400 270 L125 270 L125 240" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+                <path d="M400 240 L400 270 L325 270 L325 240" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+                <path d="M400 240 L400 270 L525 270 L525 240" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+
+                <defs>
+                    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,6 L9,3 z" fill="#333"/>
+                    </marker>
+                </defs>
+            </svg>
+        </div>
+
+        <div class="tip-box">
+            <div class="tip-title">核心优势</div>
+            <ul>
+                <li><strong>硬件抽象</strong>：一套API支持多种英特尔硬件。</li>
+                <li><strong>高性能推理</strong>：利用硬件加速库（如MKL-DNN, clDNN）。</li>
+                <li><strong>模型优化</strong>：自动进行量化、剪枝、层融合等优化。</li>
+                <li><strong>易于部署</strong>：提供C++、Python API，并支持部署到边缘设备。</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="double-border-container">
+        <h2>二、模型优化器 (Model Optimizer) 使用</h2>
+        <p>模型优化器是转换和优化模型的关键工具。它将训练后的模型转换为OpenVINO的中间表示（IR），包含一个<code>.xml</code>（网络结构）和一个<code>.bin</code>（权重数据）文件。</p>
+
+        <h3>主要功能与步骤</h3>
+        <ol>
+            <li><strong>模型加载</strong>：读取来自TensorFlow、PyTorch（通过ONNX）、Caffe等框架的模型。</li>
+            <li><strong>模型转换</strong>：将框架特定操作转换为OpenVINO操作集。</li>
+            <li><strong>模型优化</strong>：执行层融合、精度校准（如FP16/INT8量化）、常量折叠等。</li>
+            <li><strong>IR生成</strong>：输出优化后的IR文件。</li>
+        </ol>
+
+        <h3>常用命令示例</h3>
+        <div class="code-block">
+<pre>
+# 转换TensorFlow SavedModel模型
+mo --saved_model_dir ./saved_model \
+   --output_dir ./ir_output \
+   --model_name my_model \
+   --data_type FP16
+
+# 转换ONNX模型（例如来自PyTorch）
+mo --input_model model.onnx \
+   --output_dir ./ir_output \
+   --mean_values [123.68,116.78,103.94] \
+   --scale_values [58.82,58.82,58.82]
+
+# 转换并执行INT8量化（需校准数据集）
+mo --input_model model.pb \
+   --output_dir ./ir_int8 \
+   --data_type INT8 \
+   --model_name quantized_model
+</pre>
+        </div>
+
+        <h3>关键参数说明</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>参数</th>
+                    <th>说明</th>
+                    <th>示例值</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>--input_model</code></td>
+                    <td>输入模型文件路径</td>
+                    <td>model.pb, model.onnx</td>
+                </tr>
+                <tr>
+                    <td><code>--output_dir</code></td>
+                    <td>IR文件输出目录</td>
+                    <td>./ir_model</td>
+                </tr>
+                <tr>
+                    <td><code>--data_type</code></td>
+                    <td>输出模型精度</td>
+                    <td>FP32, FP16, INT8</td>
+                </tr>
+                <tr>
+                    <td><code>--mean_values, --scale_values</code></td>
+                    <td>输入数据预处理参数</td>
+                    <td>[123.68,116.78,103.94]</td>
+                </tr>
+                <tr>
+                    <td><code>--reverse_input_channels</code></td>
+                    <td>BGR与RGB通道转换</td>
+                    <td>(无值，直接添加)</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="double-border-container">
+        <h2>三、推理引擎 (Inference Engine) API调用</h2>
+        <p>推理引擎提供统一的C++和Python API，用于在目标设备上加载IR模型并执行推理。</p>
+
+        <h3>核心API调用流程</h3>
+        <ol>
+            <li><strong>初始化核心</strong>：创建<code>Core</code>对象。</li>
+            <li><strong>读取模型</strong>：加载IR文件（.xml和.bin）。</li>
+            <li><strong>配置输入输出</strong>：获取网络输入输出信息，准备数据。</li>
+            <li><strong>加载模型到设备</strong>：将模型编译并加载到指定硬件（如CPU、GPU）。</li>
+            <li><strong>创建推理请求</strong>：执行同步或异步推理。</li>
+            <li><strong>处理结果</strong>：获取并解析输出数据。</li>
+        </ol>
+
+        <h3>Python API 示例代码</h3>
+        <div class="code-block">
+<pre>
+import cv2
+import numpy as np
+from openvino.runtime import Core
+
+# 1. 初始化OpenVINO核心
+ie = Core()
+
+# 2. 读取IR模型
+model_xml = "model.xml"
+model_bin = "model.bin"
+net = ie.read_model(model=model_xml, weights=model_bin)
+
+# 3. 配置输入输出
+input_layer = next(iter(net.inputs))
+output_layer = next(iter(net.outputs))
+print(f"输入层名: {input_layer.any_name}, 形状: {input_layer.shape}")
+print(f"输出层名: {output_layer.any_name}, 形状: {output_layer.shape}")
+
+# 4. 加载模型到指定设备（如CPU、GPU）
+compiled_model = ie.compile_model(model=net, device_name="CPU")
+
+# 5. 准备输入数据（示例：图像预处理）
+image = cv2.imread("test.jpg")
+resized_image = cv2.resize(image, (224, 224))
+input_data = np.expand_dims(resized_image.transpose(2,0,1), axis=0).astype(np.float32)
+
+# 6. 执行推理
+results = compiled_model([input_data])[output_layer]
+
+# 7. 处理输出结果
+predicted_class = np.argmax(results)
+print(f"预测类别ID: {predicted_class}")
+</pre>
+        </div>
+
+        <div class="tip-box">
+            <div class="tip-title">异步推理模式</div>
+            <p>对于视频流等连续输入，使用异步推理可提高吞吐量。主要步骤：</p>
+            <ol>
+                <li>创建<code>InferRequest</code>对象。</li>
+                <li>使用<code>start_async()</code>启动异步推理。</li>
+                <li>通过<code>wait()</code>等待结果或设置回调函数。</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="double-border-container">
+        <h2>四、性能分析与调优</h2>
+        <p>部署模型后，性能调优是确保满足延迟、吞吐量和能效要求的关键步骤。</p>
+
+        <h3>性能指标</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>指标</th>
+                    <th>描述</th>
+                    <th>优化目标</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>延迟 (Latency)</strong></td>
+                    <td>处理单个输入所需时间（毫秒）</td>
+                    <td>降低</td>
+                </tr>
+                <tr>
+                    <td><strong>吞吐量 (Throughput)</strong></td>
+                    <td>单位时间处理的输入数量（FPS）</td>
+                    <td>提高</td>
+                </tr>
+                <tr>
+                    <td><strong>能效 (Energy Efficiency)</strong></td>
+                    <td>每瓦特性能（推理次数/焦耳）</td>
+                    <td>提高</td>
+                </tr>
+                <tr>
+                    <td><strong>内存占用 (Memory Footprint)</strong></td>
+                    <td>模型运行时占用的内存大小</td>
+                    <td>降低</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>常用调优策略</h3>
+        <ul>
+            <li><strong>精度选择</strong>：根据需求选择FP32、FP16或INT8精度。INT8通常能大幅提升速度并减少内存，但可能轻微损失精度。</li>
+            <li><strong>硬件选择与配置</strong>：利用<code>device_name</code>参数（如“MULTI:CPU,GPU”）进行异构推理。通过<code>set_property()</code>配置硬件特定参数（如CPU线程数）。</li>
+            <li><strong>批处理 (Batching)</strong>：增加批处理大小以提高吞吐量，但会增加延迟和内存。需根据场景权衡。</li>
+            <li><strong>异步推理</strong>：重叠数据预处理和推理时间，提高流水线效率。</li>
+            <li><strong>模型优化检查</strong>：确保模型优化器已执行了层融合、常量传播等优化。</li>
+        </ul>
+
+        <h3>性能分析工具与代码示例</h3>
+        <div class="code-block">
+<pre>
+from openvino.runtime import Core
+import time
+
+ie = Core()
+model = ie.read_model(model="model.xml")
+compiled_model = ie.compile_model(model=model, device_name="CPU")
+
+# 获取性能计数器（各层耗时）
+perf_counts = compiled_model.get_property("PERFORMANCE_HINTS")
+print("性能提示:", perf_counts)
+
+# 基准测试循环
+input_shape = compiled_model.inputs[0].shape
+dummy_input = np.random.randn(*input_shape).astype(np.float32)
+
+warmup_steps = 10
+test_steps = 100
+# 预热
+for _ in range(warmup_steps):
+    compiled_model([dummy_input])
+
+# 测量延迟
+latencies = []
+for _ in range(test_steps):
+    start = time.perf_counter()
+    compiled_model([dummy_input])
+    end = time.perf_counter()
+    latencies.append((end - start) * 1000) # 转为毫秒
+
+avg_latency = np.mean(latencies)
+fps = 1000 / avg_latency
+print(f"平均延迟: {avg_latency:.2f} ms")
+print(f"估算吞吐量: {fps:.2f} FPS")
+</pre>
+        </div>
+
+        <div class="tip-box">
+            <div class="tip-title">调优检查清单</div>
+            <ol>
+                <li>✅ 模型是否已转换为最优精度（如INT8）？</li>
+                <li>✅ 是否使用了最适合的硬件（CPU/GPU/VPU）？</li>
+                <li>✅ 批处理大小是否经过测试并达到最佳平衡？</li>
+                <li>✅ 是否启用了异步推理以提高流水线效率？</li>
+                <li>✅ 输入数据预处理是否高效（如使用OpenCV优化）？</li>
+                <li>✅ 是否使用性能分析工具定位了瓶颈层？</li>
+            </ol>
+        </div>
+    </div>
+
+    <footer>
+        <p>公众号: 蓝海资料掘金营，微信 deep3321</p>
+        <p>© 《模型量化与压缩技术实战》课程 - 第17讲：OpenVINO模型部署实战</p>
+    </footer>
+</body>
+</html>

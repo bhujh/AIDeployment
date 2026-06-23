@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模型压缩技术全景图 - 核心方法对比</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #e0f7fa 0%, #fce4ec 50%, #f3e5f5 100%);
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.92);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            border: 8px double #42a5f5;
+            position: relative;
+            overflow: hidden;
+        }
+        .container::before {
+            content: "";
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            border: 4px solid #ff9800;
+            border-radius: 30px;
+            pointer-events: none;
+            z-index: -1;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 3px dashed #7e57c2;
+        }
+        h1 {
+            color: #1565c0;
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .subtitle {
+            color: #6a1b9a;
+            font-size: 1.4rem;
+            font-weight: 300;
+        }
+        .intro {
+            background: linear-gradient(to right, #bbdefb, #e1bee7);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            border-left: 8px solid #ffb74d;
+            font-size: 1.1rem;
+        }
+        h2 {
+            color: #d81b60;
+            border-left: 6px solid #4caf50;
+            padding-left: 15px;
+            margin: 30px 0 20px;
+            font-size: 1.8rem;
+        }
+        .method-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        .method-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+            border-top: 6px solid;
+            transition: transform 0.3s ease;
+        }
+        .method-card:hover {
+            transform: translateY(-10px);
+        }
+        .method-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        .method-card h3 svg {
+            margin-right: 10px;
+        }
+        .method-card ul {
+            padding-left: 20px;
+            margin-bottom: 15px;
+        }
+        .method-card li {
+            margin-bottom: 8px;
+        }
+        .card-1 { border-color: #ef5350; }
+        .card-2 { border-color: #42a5f5; }
+        .card-3 { border-color: #66bb6a; }
+        .card-4 { border-color: #ffca28; }
+        .card-5 { border-color: #ab47bc; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 30px 0;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 18px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        th {
+            background-color: #5c6bc0;
+            color: white;
+            font-weight: 600;
+        }
+        tr:nth-child(even) {
+            background-color: #f5f5f5;
+        }
+        tr:hover {
+            background-color: #e3f2fd;
+        }
+        .architecture {
+            background-color: #f1f8e9;
+            padding: 25px;
+            border-radius: 15px;
+            margin: 30px 0;
+            text-align: center;
+            border: 3px solid #aed581;
+        }
+        .architecture svg {
+            max-width: 100%;
+            height: auto;
+        }
+        .code-block {
+            background-color: #263238;
+            color: #eceff1;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 25px 0;
+            overflow-x: auto;
+            font-family: 'Consolas', monospace;
+            border-left: 6px solid #ff9800;
+        }
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 3px dashed #26a69a;
+            color: #555;
+            font-size: 1.1rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        .highlight {
+            background-color: #fff9c4;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .tag {
+            display: inline-block;
+            background-color: #ffcc80;
+            color: #bf360c;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>模型压缩技术全景图</h1>
+            <p class="subtitle">剪枝、量化、知识蒸馏、低秩分解、轻量化网络设计等核心方法对比</p>
+        </header>
+
+        <section class="intro">
+            <p>在深度学习模型部署到资源受限的边缘设备时，模型压缩技术至关重要。本课程将系统性地介绍五大核心压缩方法：<span class="highlight">剪枝(Pruning)</span>、<span class="highlight">量化(Quantization)</span>、<span class="highlight">知识蒸馏(Knowledge Distillation)</span>、<span class="highlight">低秩分解(Low-rank Factorization)</span>和<span class="highlight">轻量化网络设计(Lightweight Network Design)</span>。通过对比其原理、优势、适用场景及实战代码，帮助您构建完整的模型压缩知识体系。</p>
+        </section>
+
+        <h2>五大核心方法详解</h2>
+        <div class="method-grid">
+            <div class="method-card card-1">
+                <h3>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="#ef5350">
+                        <path d="M18.364 5.636L16.95 7.05A5 5 0 1 0 19 12h2a7 7 0 1 1-2.636-5.364zM12 19a7 7 0 0 1-7-7h2a5 5 0 0 0 5 5v2zm-7-7a7 7 0 0 1 7-7v2a5 5 0 0 0-5 5H5zm7-7a7 7 0 0 1 7 7h-2a5 5 0 0 0-5-5V5z"/>
+                    </svg>
+                    剪枝 (Pruning)
+                </h3>
+                <p><strong>核心思想：</strong>移除模型中冗余的权重或神经元，保留最重要的连接。</p>
+                <ul>
+                    <li><strong>类型：</strong>结构化剪枝、非结构化剪枝</li>
+                    <li><strong>优势：</strong>减少参数量和计算量，降低过拟合</li>
+                    <li><strong>挑战：</strong>需要精细的微调以恢复精度</li>
+                </ul>
+                <div class="tag">稀疏化</div><div class="tag">模型瘦身</div><div class="tag">迭代训练</div>
+            </div>
+
+            <div class="method-card card-2">
+                <h3>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="#42a5f5">
+                        <path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/>
+                    </svg>
+                    量化 (Quantization)
+                </h3>
+                <p><strong>核心思想：</strong>将高精度浮点数（如FP32）转换为低精度整数（如INT8），减少内存占用和加速推理。</p>
+                <ul>
+                    <li><strong>类型：</strong>训练后量化、量化感知训练</li>
+                    <li><strong>优势：</strong>显著减少存储和带宽，硬件友好</li>
+                    <li><strong>挑战：</strong>精度损失，需要校准</li>
+                </ul>
+                <div class="tag">INT8</div><div class="tag">内存优化</div><div class="tag">硬件加速</div>
+            </div>
+
+            <div class="method-card card-3">
+                <h3>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="#66bb6a">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    知识蒸馏 (Knowledge Distillation)
+                </h3>
+                <p><strong>核心思想：</strong>让小型学生模型模仿大型教师模型的输出（软标签），传递“暗知识”。</p>
+                <ul>
+                    <li><strong>关键：</strong>软标签、温度参数、损失函数设计</li>
+                    <li><strong>优势：</strong>小模型获得大模型的泛化能力</li>
+                    <li><strong>挑战：</strong>需要预训练好的教师模型</li>
+                </ul>
+                <div class="tag">师生模型</div><div class="tag">软目标</div><div class="tag">模型迁移</div>
+            </div>
+
+            <div class="method-card card-4">
+                <h3>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="#ffca28">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                    </svg>
+                    低秩分解 (Low-rank Factorization)
+                </h3>
+                <p><strong>核心思想：</strong>将大权重矩阵分解为多个小矩阵的乘积，减少参数数量。</p>
+                <ul>
+                    <li><strong>常用方法：</strong>SVD、CP分解、Tucker分解</li>
+                    <li><strong>优势：</strong>数学理论扎实，压缩率高</li>
+                    <li><strong>挑战：</strong>分解计算成本高，可能影响模型表达能力</li>
+                </ul>
+                <div class="tag">矩阵分解</div><div class="tag">SVD</div><div class="tag">参数共享</div>
+            </div>
+
+            <div class="method-card card-5">
+                <h3>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="#ab47bc">
+                        <path d="M21 11.01L3 11v2h18v-2zM3 16h12v2H3v-2zM21 6H3v2.01L21 8V6z"/>
+                    </svg>
+                    轻量化网络设计 (Lightweight Design)
+                </h3>
+                <p><strong>核心思想：</strong>从网络架构层面设计高效算子，如深度可分离卷积、通道混洗等。</p>
+                <ul>
+                    <li><strong>代表网络：</strong>MobileNet, ShuffleNet, EfficientNet</li>
+                    <li><strong>优势：</strong>原生高效，无需后处理</li>
+                    <li><strong>挑战：</strong>需要重新设计训练，架构搜索成本高</li>
+                </ul>
+                <div class="tag">架构创新</div><div class="tag">MobileNet</div><div class="tag">高效算子</div>
+            </div>
+        </div>
+
+        <h2>核心方法对比表</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>方法</th>
+                    <th>压缩率</th>
+                    <th>精度损失</th>
+                    <th>推理加速</th>
+                    <th>训练成本</th>
+                    <th>典型应用</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>剪枝</strong></td>
+                    <td>高 (2x-10x)</td>
+                    <td>中低 (需微调)</td>
+                    <td>中等</td>
+                    <td>高 (迭代剪枝)</td>
+                    <td>CNN, RNN</td>
+                </tr>
+                <tr>
+                    <td><strong>量化</strong></td>
+                    <td>中 (4x)</td>
+                    <td>低 (校准后)</td>
+                    <td>高 (硬件支持)</td>
+                    <td>低 (训练后量化)</td>
+                    <td>边缘设备部署</td>
+                </tr>
+                <tr>
+                    <td><strong>知识蒸馏</strong></td>
+                    <td>中 (2x-5x)</td>
+                    <td>低 (接近教师)</td>
+                    <td>中等</td>
+                    <td>中 (需教师模型)</td>
+                    <td>模型小型化</td>
+                </tr>
+                <tr>
+                    <td><strong>低秩分解</strong></td>
+                    <td>高 (5x-10x)</td>
+                    <td>中 (可能损失)</td>
+                    <td>中等</td>
+                    <td>高 (分解计算)</td>
+                    <td>全连接层压缩</td>
+                </tr>
+                <tr>
+                    <td><strong>轻量化设计</strong></td>
+                    <td>高 (10x+)</td>
+                    <td>低 (精心设计)</td>
+                    <td>高</td>
+                    <td>高 (设计/搜索)</td>
+                    <td>移动端视觉</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>模型压缩技术架构图</h2>
+        <div class="architecture">
+            <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
+                <rect x="50" y="150" width="120" height="60" rx="10" fill="#ffcdd2" stroke="#ef5350" stroke-width="3"/>
+                <text x="110" y="185" text-anchor="middle" font-weight="bold" fill="#b71c1c">原始大模型</text>
+
+                <rect x="250" y="50" width="120" height="60" rx="10" fill="#c8e6c9" stroke="#66bb6a" stroke-width="3"/>
+                <text x="310" y="85" text-anchor="middle" font-weight="bold" fill="#1b5e20">轻量化设计</text>
+
+                <rect x="250" y="150" width="120" height="60" rx="10" fill="#bbdefb" stroke="#42a5f5" stroke-width="3"/>
+                <text x="310" y="185" text-anchor="middle" font-weight="bold" fill="#0d47a1">知识蒸馏</text>
+
+                <rect x="250" y="250" width="120" height="60" rx="10" fill="#fff9c4" stroke="#ffca28" stroke-width="3"/>
+                <text x="310" y="285" text-anchor="middle" font-weight="bold" fill="#f57f17">低秩分解</text>
+
+                <rect x="450" y="100" width="120" height="60" rx="10" fill="#f8bbd0" stroke="#ec407a" stroke-width="3"/>
+                <text x="510" y="135" text-anchor="middle" font-weight="bold" fill="#880e4f">剪枝</text>
+
+                <rect x="450" y="200" width="120" height="60" rx="10" fill="#d1c4e9" stroke="#7e57c2" stroke-width="3"/>
+                <text x="510" y="235" text-anchor="middle" font-weight="bold" fill="#311b92">量化</text>
+
+                <rect x="650" y="150" width="120" height="60" rx="10" fill="#80deea" stroke="#26c6da" stroke-width="3"/>
+                <text x="710" y="185" text-anchor="middle" font-weight="bold" fill="#006064">压缩后模型</text>
+
+                <path d="M170 180 L240 180 L240 80 L250 80" fill="none" stroke="#666" stroke-width="2" stroke-dasharray="5,5"/>
+                <path d="M170 180 L240 180 L240 180 L250 180" fill="none" stroke="#666" stroke-width="2" stroke-dasharray="5,5"/>
+                <path d="M170 180 L240 180 L240 280 L250 280" fill="none" stroke="#666" stroke-width="2" stroke-dasharray="5,5"/>
+                <path d="M370 180 L440 180 L440 130 L450 130" fill="none" stroke="#666" stroke-width="2"/>
+                <path d="M370 180 L440 180 L440 230 L450 230" fill="none" stroke="#666" stroke-width="2"/>
+                <path d="M570 180 L650 180" fill="none" stroke="#666" stroke-width="2"/>
+
+                <circle cx="240" cy="180" r="5" fill="#666"/>
+                <circle cx="440" cy="180" r="5" fill="#666"/>
+            </svg>
+            <p style="margin-top: 15px; font-style: italic;">模型压缩技术路径：原始大模型可通过多种路径压缩为高效小模型，常组合使用以达到最佳效果。</p>
+        </div>
+
+        <h2>实战代码示例：PyTorch 模型量化</h2>
+        <div class="code-block">
+<pre><code>import torch
+import torch.nn as nn
+import torch.quantization
+
+# 1. 定义简单模型
+class SimpleCNN(nn.Module):
+    def __init__(self):
+        super(SimpleCNN, self).__init__()
+        self.conv1 = nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1)
+        self.relu = nn.ReLU()
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.fc = nn.Linear(16 * 16 * 16, 10)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.relu(x)
+        x = self.pool(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        return x
+
+# 2. 实例化模型并加载预训练权重（此处省略）
+model = SimpleCNN()
+model.eval()
+
+# 3. 量化配置
+model.qconfig = torch.quantization.get_default_qconfig('fbgemm')
+
+# 4. 准备量化（插入观察者）
+torch.quantization.prepare(model, inplace=True)
+
+# 5. 校准（使用少量数据）
+# for data, _ in calibration_dataloader:
+#     model(data)
+
+# 6. 转换量化模型
+quantized_model = torch.quantization.convert(model, inplace=False)
+
+print("量化完成！")
+print(f"原始模型大小: 估计值")
+print(f"量化后模型大小: 估计值减少约75%")
+
+# 7. 保存量化模型
+torch.save(quantized_model.state_dict(), 'quantized_model.pth')</code></pre>
+        </div>
+
+        <h2>技术选型建议</h2>
+        <ul style="background-color: #e8f5e9; padding: 25px; border-radius: 15px; margin-bottom: 30px;">
+            <li style="margin-bottom: 12px;"><strong>追求极致速度与能效：</strong>首选<strong>量化</strong> + <strong>轻量化网络设计</strong>（如MobileNetV3量化版）。</li>
+            <li style="margin-bottom: 12px;"><strong>有限计算资源下的高精度：</strong>推荐<strong>知识蒸馏</strong>，用小模型继承大模型的知识。</li>
+            <li style="margin-bottom: 12px;"><strong>减少存储与传输开销：</strong><strong>剪枝</strong>与<strong>低秩分解</strong>可大幅降低参数量。</li>
+            <li style="margin-bottom: 12px;"><strong>工业级部署：</strong>通常采用<strong>组合策略</strong>，如“剪枝+量化”或“蒸馏+量化”。</li>
+            <li><strong>研究创新：</strong>关注神经架构搜索(NAS)与自动化压缩(AutoML)的前沿进展。</li>
+        </ul>
+
+        <footer>
+            <p>公众号: 蓝海资料掘金营，微信 deep3321</p>
+            <p style="font-size: 0.9rem; margin-top: 5px; color: #777;">《模型量化与压缩技术实战》课程 - 第三章 © 2026</p>
+        </footer>
+    </div>
+</body>
+</html>

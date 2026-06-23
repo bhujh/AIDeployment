@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TensorRT模型优化与部署实战</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50; /* 青草绿 */
+            --secondary-color: #FF9800; /* 活力橙 */
+            --accent-color: #2196F3; /* 天空蓝 */
+            --light-color: #FFF9C4; /* 淡鹅黄 */
+            --background-color: #F5F5F5; /* 浅灰背景 */
+            --text-color: #333333;
+            --border-color: #BDBDBD;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            border: 8px double var(--primary-color);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+            border-bottom: 5px solid var(--secondary-color);
+        }
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        main {
+            padding: 30px;
+        }
+        section {
+            margin-bottom: 40px;
+            padding: 25px;
+            border: 3px solid var(--border-color);
+            border-radius: 12px;
+            background-color: #fff;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        h2 {
+            color: var(--secondary-color);
+            border-left: 6px solid var(--accent-color);
+            padding-left: 15px;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+        h3 {
+            color: var(--primary-color);
+            margin: 15px 0 10px;
+        }
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        ul, ol {
+            margin-left: 25px;
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            border: 2px solid var(--border-color);
+        }
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 12px 15px;
+            text-align: left;
+        }
+        th {
+            background-color: var(--light-color);
+            color: var(--text-color);
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .code-block {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+            border-left: 5px solid var(--secondary-color);
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+        .svg-container {
+            display: flex;
+            justify-content: center;
+            margin: 25px 0;
+        }
+        svg {
+            max-width: 100%;
+            height: auto;
+        }
+        .highlight {
+            background-color: var(--light-color);
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        footer {
+            background: linear-gradient(to right, var(--primary-color), var(--accent-color));
+            color: white;
+            text-align: center;
+            padding: 25px;
+            font-size: 1.1rem;
+            border-top: 5px solid var(--secondary-color);
+            margin-top: 20px;
+        }
+        .footer-text {
+            letter-spacing: 1.5px;
+        }
+        .note {
+            background-color: #E3F2FD;
+            border-left: 5px solid var(--accent-color);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>TensorRT模型优化与部署实战</h1>
+            <p class="subtitle">第16讲：TensorRT简介、ONNX模型转换、Builder配置与推理引擎构建</p>
+        </header>
+
+        <main>
+            <section id="intro">
+                <h2>一、TensorRT简介</h2>
+                <p><span class="highlight">NVIDIA TensorRT</span> 是一个高性能的深度学习推理（Inference）优化器和运行时库。它旨在将训练好的神经网络模型进行优化，并在NVIDIA GPU上提供低延迟、高吞吐量的推理服务。</p>
+                <div class="svg-container">
+                    <svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="10" y="80" width="120" height="60" rx="10" fill="#4CAF50" stroke="#2E7D32" stroke-width="2"/>
+                        <text x="70" y="115" text-anchor="middle" fill="white" font-weight="bold">训练框架</text>
+                        <path d="M130 110 L170 110" stroke="#FF9800" stroke-width="3" marker-end="url(#arrow)"/>
+                        <rect x="170" y="80" width="120" height="60" rx="10" fill="#2196F3" stroke="#1565C0" stroke-width="2"/>
+                        <text x="230" y="115" text-anchor="middle" fill="white" font-weight="bold">TensorRT优化</text>
+                        <path d="M290 110 L330 110" stroke="#FF9800" stroke-width="3" marker-end="url(#arrow)"/>
+                        <rect x="330" y="80" width="120" height="60" rx="10" fill="#FF9800" stroke="#EF6C00" stroke-width="2"/>
+                        <text x="390" y="115" text-anchor="middle" fill="white" font-weight="bold">GPU部署</text>
+                        <defs>
+                            <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                                <path d="M0,0 L0,6 L9,3 z" fill="#FF9800"/>
+                            </marker>
+                        </defs>
+                    </svg>
+                </div>
+                <h3>核心特性</h3>
+                <ul>
+                    <li><strong>层融合（Layer Fusion）</strong>：将多个层合并为一个内核，减少内存访问和内核启动开销。</li>
+                    <li><strong>精度校准（Precision Calibration）</strong>：支持FP32、FP16、INT8精度，在精度损失最小的情况下大幅提升性能。</li>
+                    <li><strong>内核自动调优（Kernel Auto-Tuning）</strong>：为目标GPU选择最佳的内核实现。</li>
+                    <li><strong>动态张量内存（Dynamic Tensor Memory）</strong>：高效管理内存，最小化内存占用并复用内存。</li>
+                    <li><strong>多流执行（Multi-Stream Execution）</strong>：可并行处理多个输入流。</li>
+                </ul>
+                <div class="note">
+                    <strong>注意：</strong> TensorRT是一个推理优化器，不用于模型训练。它接收来自PyTorch、TensorFlow等框架的训练好的模型。
+                </div>
+            </section>
+
+            <section id="onnx-conversion">
+                <h2>二、ONNX模型转换</h2>
+                <p><span class="highlight">ONNX（Open Neural Network Exchange）</span>是一种开放的模型表示格式，是连接训练框架与推理引擎的桥梁。将模型转换为ONNX是使用TensorRT的常见第一步。</p>
+                <h3>转换流程</h3>
+                <ol>
+                    <li><strong>从训练框架导出</strong>：使用PyTorch的<code>torch.onnx.export</code>或TensorFlow的<code>tf2onnx</code>工具将模型转换为ONNX格式。</li>
+                    <li><strong>简化与优化</strong>：使用ONNX Simplifier等工具对模型图进行简化。</li>
+                    <li><strong>验证</strong>：使用ONNX Runtime验证模型正确性。</li>
+                </ol>
+                <h3>PyTorch模型导出示例</h3>
+                <div class="code-block">
+<pre><code>import torch
+import torch.onnx
+
+# 1. 加载训练好的模型
+model = YourModelClass()
+model.load_state_dict(torch.load('model.pth'))
+model.eval()
+
+# 2. 创建示例输入张量
+dummy_input = torch.randn(1, 3, 224, 224, device='cuda')
+
+# 3. 导出ONNX模型
+input_names = ['input']
+output_names = ['output']
+torch.onnx.export(model,
+                  dummy_input,
+                  "model.onnx",
+                  verbose=True,
+                  input_names=input_names,
+                  output_names=output_names,
+                  opset_version=11,
+                  do_constant_folding=True,
+                  dynamic_axes={'input': {0: 'batch_size'},
+                                'output': {0: 'batch_size'}})
+
+print("ONNX模型导出成功！")</code></pre>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>工具/库</th>
+                            <th>作用</th>
+                            <th>备注</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>torch.onnx.export</td>
+                            <td>PyTorch官方导出工具</td>
+                            <td>需指定opset版本</td>
+                        </tr>
+                        <tr>
+                            <td>onnx-simplifier</td>
+                            <td>简化ONNX模型结构</td>
+                            <td>减少冗余节点</td>
+                        </tr>
+                        <tr>
+                            <td>onnxruntime</td>
+                            <td>验证ONNX模型推理</td>
+                            <td>确保转换正确性</td>
+                        </tr>
+                        <tr>
+                            <td>polygraphy</td>
+                            <td>TensorRT工具集的一部分</td>
+                            <td>用于调试和验证</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="builder-config">
+                <h2>三、TensorRT Builder配置</h2>
+                <p><span class="highlight">Builder</span> 是TensorRT的核心组件，负责从网络定义创建优化后的推理引擎。配置Builder是性能调优的关键步骤。</p>
+                <div class="svg-container">
+                    <svg viewBox="0 0 600 300" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="50" y="30" width="200" height="50" rx="5" fill="#FFCC80" stroke="#FF9800" stroke-width="2"/>
+                        <text x="150" y="60" text-anchor="middle" fill="black" font-weight="bold">ONNX模型解析</text>
+                        <path d="M150 80 L150 110" stroke="#4CAF50" stroke-width="2" marker-end="url(#arrow2)"/>
+                        <rect x="50" y="110" width="200" height="50" rx="5" fill="#C8E6C9" stroke="#4CAF50" stroke-width="2"/>
+                        <text x="150" y="140" text-anchor="middle" fill="black" font-weight="bold">创建Builder与Network</text>
+                        <path d="M150 160 L150 190" stroke="#2196F3" stroke-width="2" marker-end="url(#arrow2)"/>
+                        <rect x="50" y="190" width="200" height="50" rx="5" fill="#BBDEFB" stroke="#2196F3" stroke-width="2"/>
+                        <text x="150" y="220" text-anchor="middle" fill="black" font-weight="bold">配置BuilderConfig</text>
+                        <path d="M250 215 L350 215" stroke="#FF9800" stroke-width="2" marker-end="url(#arrow2)"/>
+                        <rect x="350" y="190" width="200" height="50" rx="5" fill="#E1BEE7" stroke="#7B1FA2" stroke-width="2"/>
+                        <text x="450" y="220" text-anchor="middle" fill="black" font-weight="bold">构建优化引擎</text>
+                        <defs>
+                            <marker id="arrow2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                                <path d="M0,0 L0,6 L9,3 z" fill="#333"/>
+                            </marker>
+                        </defs>
+                    </svg>
+                </div>
+                <h3>关键配置选项</h3>
+                <ul>
+                    <li><strong>工作空间大小（Workspace Size）</strong>：分配给Builder用于优化过程的内存。</li>
+                    <li><strong>精度模式（Precision Mode）</strong>：设置FP16或INT8推理，需搭配校准器（Calibrator）。</li>
+                    <li><strong>层数限制（Layer Number Limit）</strong>：可设置网络层数的上限。</li>
+                    <li><strong>配置文件（Profile）</strong>：用于动态形状输入，定义最小、最优、最大输入尺寸。</li>
+                </ul>
+                <h3>Builder配置代码示例</h3>
+                <div class="code-block">
+<pre><code>import tensorrt as trt
+
+logger = trt.Logger(trt.Logger.WARNING)
+builder = trt.Builder(logger)
+network = builder.create_network(1 &lt;&lt; int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH))
+parser = trt.OnnxParser(network, logger)
+
+# 解析ONNX模型
+with open("model.onnx", "rb") as f:
+    parser.parse(f.read())
+
+config = builder.create_builder_config()
+# 设置最大工作空间为1GB
+config.max_workspace_size = 1 &lt;&lt; 30  # 1GB
+# 启用FP16精度模式
+config.set_flag(trt.BuilderFlag.FP16)
+# 设置优化级别
+builder_config.builder_optimization_level = 3
+
+# 对于动态形状，需要添加优化配置文件
+profile = builder.create_optimization_profile()
+profile.set_shape("input", min=(1,3,224,224),
+                         opt=(8,3,224,224),
+                         max=(32,3,224,224))
+config.add_optimization_profile(profile)
+
+print("Builder配置完成。")</code></pre>
+                </div>
+            </section>
+
+            <section id="engine-build-test">
+                <h2>四、推理引擎构建与测试</h2>
+                <p>配置完成后，Builder将构建一个高度优化的<span class="highlight">推理引擎（Inference Engine）</span>。该引擎可序列化保存（.plan或.engine文件）并在部署时高效加载。</p>
+                <h3>构建与序列化引擎</h3>
+                <div class="code-block">
+<pre><code># 构建引擎
+engine = builder.build_engine(network, config)
+if engine is None:
+    print("引擎构建失败！")
+    exit()
+
+# 序列化引擎并保存
+serialized_engine = engine.serialize()
+with open("model.engine", "wb") as f:
+    f.write(serialized_engine)
+print("引擎已保存为 model.engine")
+
+# 清理资源
+del parser, network, config, builder</code></pre>
+                </div>
+                <h3>加载引擎并进行推理</h3>
+                <div class="code-block">
+<pre><code>import numpy as np
+import tensorrt as trt
+
+# 1. 加载序列化引擎
+logger = trt.Logger(trt.Logger.WARNING)
+runtime = trt.Runtime(logger)
+with open("model.engine", "rb") as f:
+    serialized_engine = f.read()
+engine = runtime.deserialize_cuda_engine(serialized_engine)
+
+# 2. 创建执行上下文
+context = engine.create_execution_context()
+
+# 3. 准备输入输出缓冲区（GPU内存）
+input_name = engine.get_binding_name(0)
+output_name = engine.get_binding_name(1)
+
+# 获取输入输出尺寸
+input_shape = engine.get_binding_shape(0)  # 例如 (1,3,224,224)
+output_shape = engine.get_binding_shape(1)
+
+# 分配GPU内存
+import pycuda.driver as cuda
+import pycuda.autoinit
+
+d_input = cuda.mem_alloc(np.prod(input_shape) * np.dtype(np.float32).itemsize)
+d_output = cuda.mem_alloc(np.prod(output_shape) * np.dtype(np.float32).itemsize)
+bindings = [int(d_input), int(d_output)]
+
+# 4. 执行推理
+# 准备输入数据（假设host_input是numpy数组）
+host_input = np.random.random(input_shape).astype(np.float32)
+host_output = np.empty(output_shape, dtype=np.float32)
+
+# 拷贝数据到GPU
+cuda.memcpy_htod(d_input, host_input)
+# 执行推理
+context.execute_v2(bindings=bindings)
+# 拷贝结果回CPU
+cuda.memcpy_dtoh(host_output, d_output)
+
+print("推理完成！输出形状：", host_output.shape)
+print("前5个输出值：", host_output.flatten()[:5])</code></pre>
+                </div>
+                <h3>性能测试要点</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>测试项目</th>
+                            <th>方法</th>
+                            <th>目标</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>延迟（Latency）</td>
+                            <td>测量单次推理时间（ms）</td>
+                            <td>越低越好</td>
+                        </tr>
+                        <tr>
+                            <td>吞吐量（Throughput）</td>
+                            <td>测量批量处理时的每秒推理次数（FPS）</td>
+                            <td>越高越好</td>
+                        </tr>
+                        <tr>
+                            <td>精度验证</td>
+                            <td>对比原始模型与TensorRT引擎的输出差异（如余弦相似度）</td>
+                            <td>差异 &lt; 1e-3</td>
+                        </tr>
+                        <tr>
+                            <td>内存占用</td>
+                            <td>监控GPU显存使用量</td>
+                            <td>优化后应显著降低</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="note">
+                    <strong>最佳实践：</strong> 生产环境部署时，建议使用TensorRT的C++ API以获得最佳性能，并使用异步流（Stream）来重叠计算和数据传输。
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p class="footer-text">公众号: 蓝海资料掘金营，微信 deep3321</p>
+            <p style="margin-top:10px; font-size:0.9rem; opacity:0.8;">《模型量化与压缩技术实战》课程 - TensorRT优化与部署篇</p>
+        </footer>
+    </div>
+</body>
+</html>

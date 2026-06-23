@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyTorch模型开发基础 - 蓝海资料掘金营</title>
+    <style>
+        :root {
+            --primary: #4CAF50; /* 活力绿 */
+            --secondary: #2196F3; /* 天空蓝 */
+            --accent: #FF9800; /* 阳光橙 */
+            --light: #FFF9C4; /* 淡鹅黄 */
+            --dark: #333333;
+            --text: #424242;
+            --bg: #F5F5F5;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(76, 175, 80, 0.05) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(33, 150, 243, 0.05) 0%, transparent 20%);
+        }
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border-radius: 20px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        main {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+        }
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border-top: 6px solid var(--accent);
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.12);
+        }
+        h2 {
+            color: var(--secondary);
+            border-bottom: 3px solid var(--light);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+        h3 {
+            color: var(--primary);
+            margin: 20px 0 10px;
+        }
+        ul, ol {
+            padding-left: 25px;
+            margin: 15px 0;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background-color: var(--secondary);
+            color: white;
+            font-weight: 600;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: var(--light);
+        }
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            border-left: 5px solid var(--accent);
+        }
+        code {
+            font-family: 'Courier New', monospace;
+        }
+        .svg-container {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        .architecture {
+            width: 100%;
+            height: auto;
+        }
+        .highlight {
+            background-color: var(--light);
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-weight: bold;
+            color: var(--dark);
+        }
+        footer {
+            text-align: center;
+            padding: 30px;
+            margin-top: 50px;
+            border-top: 2px dashed var(--primary);
+            color: var(--text);
+            font-size: 1.1rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+        .keyword {
+            color: var(--secondary);
+            font-weight: bold;
+        }
+        .note {
+            background: #E8F5E9;
+            padding: 15px;
+            border-left: 5px solid var(--primary);
+            border-radius: 0 10px 10px 0;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>PyTorch模型开发基础</h1>
+        <p class="subtitle">张量操作、自动求导、神经网络模块构建、模型训练与保存</p>
+        <p>《PyTorch模型部署实战：ONNX与TensorRT全流程》 · 第三章</p>
+    </header>
+
+    <main>
+        <section class="card">
+            <h2>一、核心概念总览</h2>
+            <p>PyTorch是一个基于Python的科学计算库，专为<span class="keyword">深度学习</span>研究设计，提供两大核心功能：</p>
+            <ul>
+                <li><span class="highlight">强大的GPU加速张量计算</span></li>
+                <li><span class="highlight">自动求导系统</span>构建和训练神经网络</li>
+            </ul>
+            
+            <div class="svg-container">
+                <svg class="architecture" viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="50" y="50" width="150" height="60" rx="10" fill="#4CAF50" stroke="#2E7D32" stroke-width="2"/>
+                    <text x="125" y="85" text-anchor="middle" fill="white" font-weight="bold">张量(Tensor)</text>
+                    <rect x="250" y="50" width="150" height="60" rx="10" fill="#2196F3" stroke="#1565C0" stroke-width="2"/>
+                    <text x="325" y="85" text-anchor="middle" fill="white" font-weight="bold">自动求导(Autograd)</text>
+                    <rect x="450" y="50" width="150" height="60" rx="10" fill="#FF9800" stroke="#EF6C00" stroke-width="2"/>
+                    <text x="525" y="85" text-anchor="middle" fill="white" font-weight="bold">神经网络(nn.Module)</text>
+                    <rect x="650" y="50" width="150" height="60" rx="10" fill="#9C27B0" stroke="#6A1B9A" stroke-width="2"/>
+                    <text x="725" y="85" text-anchor="middle" fill="white" font-weight="bold">优化器(Optimizer)</text>
+                    
+                    <path d="M200 110 L250 110" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+                    <path d="M400 110 L450 110" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+                    <path d="M600 110 L650 110" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+                    
+                    <rect x="300" y="180" width="250" height="80" rx="15" fill="#FFF9C4" stroke="#FF9800" stroke-width="3"/>
+                    <text x="425" y="225" text-anchor="middle" fill="#333" font-weight="bold" font-size="18">模型训练与保存</text>
+                    <text x="425" y="245" text-anchor="middle" fill="#666" font-size="14">训练循环、验证、持久化</text>
+                    
+                    <path d="M125 170 Q125 200 300 200" stroke="#333" stroke-width="2" fill="none" stroke-dasharray="5,5" marker-end="url(#arrow)"/>
+                    <path d="M475 170 Q475 200 550 200" stroke="#333" stroke-width="2" fill="none" stroke-dasharray="5,5" marker-end="url(#arrow)"/>
+                    <path d="M725 170 Q725 200 650 200" stroke="#333" stroke-width="2" fill="none" stroke-dasharray="5,5" marker-end="url(#arrow)"/>
+                    
+                    <defs>
+                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" fill="#333"/>
+                        </marker>
+                    </defs>
+                </svg>
+                <p class="note">PyTorch核心工作流程：从数据张量到可部署模型</p>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>二、张量(Tensor)操作</h2>
+            <p>张量是PyTorch的基础数据结构，类似于NumPy数组，但支持GPU加速。</p>
+            
+            <h3>1. 创建张量</h3>
+            <pre><code>import torch
+
+# 从数据创建
+x = torch.tensor([1, 2, 3, 4])
+# 创建全零张量
+zeros = torch.zeros(2, 3)  # 2行3列
+# 创建随机张量
+rand_tensor = torch.rand(3, 4)
+# 从NumPy转换
+import numpy as np
+np_array = np.array([5, 6, 7])
+torch_tensor = torch.from_numpy(np_array)</code></pre>
+            
+            <h3>2. 基本操作</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>操作类型</th>
+                        <th>示例代码</th>
+                        <th>说明</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>算术运算</td>
+                        <td><code>z = x + y</code></td>
+                        <td>逐元素相加</td>
+                    </tr>
+                    <tr>
+                        <td>矩阵乘法</td>
+                        <td><code>matmul = torch.mm(A, B)</code></td>
+                        <td>矩阵A与B相乘</td>
+                    </tr>
+                    <tr>
+                        <td>形状变换</td>
+                        <td><code>reshaped = x.view(2, -1)</code></td>
+                        <td>改变张量形状</td>
+                    </tr>
+                    <tr>
+                        <td>索引切片</td>
+                        <td><code>slice = x[1:3, :]</code></td>
+                        <td>与Python列表类似</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h3>3. GPU加速</h3>
+            <pre><code># 检查GPU是否可用
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"使用设备: {device}")
+
+# 将张量移动到GPU
+if torch.cuda.is_available():
+    tensor_gpu = torch.rand(3, 3).cuda()
+    # 或使用
+    tensor_gpu = torch.rand(3, 3).to(device)</code></pre>
+        </section>
+
+        <section class="card">
+            <h2>三、自动求导(Autograd)</h2>
+            <p>PyTorch的自动微分引擎，用于神经网络训练中的反向传播。</p>
+            
+            <h3>1. 基本使用</h3>
+            <pre><code># 创建需要梯度的张量
+x = torch.tensor(2.0, requires_grad=True)
+y = torch.tensor(3.0, requires_grad=True)
+
+# 进行计算
+z = x**2 + y**3 + 5
+
+# 反向传播计算梯度
+z.backward()
+
+print(f"∂z/∂x = {x.grad}")  # 输出: 4.0 (因为 ∂z/∂x = 2x)
+print(f"∂z/∂y = {y.grad}")  # 输出: 27.0 (因为 ∂z/∂y = 3y²)</code></pre>
+            
+            <h3>2. 计算图概念</h3>
+            <div class="svg-container">
+                <svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="50" y="80" width="80" height="40" rx="5" fill="#E3F2FD" stroke="#2196F3" stroke-width="2"/>
+                    <text x="90" y="105" text-anchor="middle" fill="#1565C0">x=2.0</text>
+                    <text x="90" y="125" text-anchor="middle" fill="#666" font-size="12">requires_grad=True</text>
+                    
+                    <rect x="180" y="80" width="80" height="40" rx="5" fill="#E3F2FD" stroke="#2196F3" stroke-width="2"/>
+                    <text x="220" y="105" text-anchor="middle" fill="#1565C0">y=3.0</text>
+                    <text x="220" y="125" text-anchor="middle" fill="#666" font-size="12">requires_grad=True</text>
+                    
+                    <rect x="310" y="40" width="100" height="40" rx="5" fill="#FFF3E0" stroke="#FF9800" stroke-width="2"/>
+                    <text x="360" y="65" text-anchor="middle" fill="#EF6C00">x²</text>
+                    
+                    <rect x="310" y="120" width="100" height="40" rx="5" fill="#FFF3E0" stroke="#FF9800" stroke-width="2"/>
+                    <text x="360" y="145" text-anchor="middle" fill="#EF6C00">y³</text>
+                    
+                    <rect x="450" y="80" width="100" height="40" rx="5" fill="#E8F5E9" stroke="#4CAF50" stroke-width="2"/>
+                    <text x="500" y="105" text-anchor="middle" fill="#2E7D32">z = x² + y³ + 5</text>
+                    
+                    <path d="M130 100 L310 60" stroke="#333" stroke-width="2" fill="none"/>
+                    <path d="M260 100 L310 140" stroke="#333" stroke-width="2" fill="none"/>
+                    <path d="M410 80 L450 100" stroke="#333" stroke-width="2" fill="none"/>
+                    <path d="M410 120 L450 100" stroke="#333" stroke-width="2" fill="none"/>
+                    
+                    <text x="220" y="30" text-anchor="middle" fill="#333" font-weight="bold">计算图示例</text>
+                    <path d="M500 120 L500 160 L100 160 L100 120" stroke="#F44336" stroke-width="2" fill="none" stroke-dasharray="5,5"/>
+                    <text x="300" y="180" text-anchor="middle" fill="#F44336" font-size="14">反向传播路径：z.backward()计算梯度</text>
+                </svg>
+            </div>
+            
+            <div class="note">
+                <strong>注意：</strong>训练时，需要调用<code>zero_grad()</code>清除累积的梯度，避免梯度累加。
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>四、神经网络模块构建</h2>
+            <p>使用<code>torch.nn</code>模块构建神经网络。</p>
+            
+            <h3>1. 自定义网络层</h3>
+            <pre><code>import torch.nn as nn
+import torch.nn.functional as F
+
+class SimpleCNN(nn.Module):
+    def __init__(self):
+        super(SimpleCNN, self).__init__()
+        # 卷积层
+        self.conv1 = nn.Conv2d(3, 16, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=3, padding=1)
+        # 池化层
+        self.pool = nn.MaxPool2d(2, 2)
+        # 全连接层
+        self.fc1 = nn.Linear(32 * 8 * 8, 256)
+        self.fc2 = nn.Linear(256, 10)
+        # 丢弃层防止过拟合
+        self.dropout = nn.Dropout(0.25)
+    
+    def forward(self, x):
+        # 前向传播定义
+        x = self.pool(F.relu(self.conv1(x)))
+        x = self.pool(F.relu(self.conv2(x)))
+        x = x.view(-1, 32 * 8 * 8)  # 展平
+        x = F.relu(self.fc1(x))
+        x = self.dropout(x)
+        x = self.fc2(x)
+        return x
+
+# 实例化模型
+model = SimpleCNN()
+print(model)</code></pre>
+            
+            <h3>2. 常用层类型</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>层类型</th>
+                        <th>PyTorch类</th>
+                        <th>主要参数</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>全连接层</td>
+                        <td><code>nn.Linear</code></td>
+                        <td>in_features, out_features</td>
+                    </tr>
+                    <tr>
+                        <td>卷积层</td>
+                        <td><code>nn.Conv2d</code></td>
+                        <td>in_channels, out_channels, kernel_size</td>
+                    </tr>
+                    <tr>
+                        <td>池化层</td>
+                        <td><code>nn.MaxPool2d</code></td>
+                        <td>kernel_size, stride</td>
+                    </tr>
+                    <tr>
+                        <td>归一化层</td>
+                        <td><code>nn.BatchNorm2d</code></td>
+                        <td>num_features</td>
+                    </tr>
+                    <tr>
+                        <td>丢弃层</td>
+                        <td><code>nn.Dropout</code></td>
+                        <td>p (丢弃概率)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="card">
+            <h2>五、模型训练与保存</h2>
+            
+            <h3>1. 训练流程</h3>
+            <ol>
+                <li>准备数据集和数据加载器</li>
+                <li>定义模型、损失函数和优化器</li>
+                <li>训练循环：前向传播、计算损失、反向传播、参数更新</li>
+                <li>验证和测试</li>
+                <li>保存和加载模型</li>
+            </ol>
+            
+            <h3>2. 完整训练示例</h3>
+            <pre><code>import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
+
+# 1. 准备模拟数据
+inputs = torch.randn(100, 3, 32, 32)  # 100张32x32的RGB图像
+labels = torch.randint(0, 10, (100,))  # 100个标签(0-9)
+dataset = TensorDataset(inputs, labels)
+dataloader = DataLoader(dataset, batch_size=16, shuffle=True)
+
+# 2. 初始化模型、损失函数、优化器
+model = SimpleCNN()
+criterion = nn.CrossEntropyLoss()  # 交叉熵损失
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+# 3. 训练循环
+num_epochs = 10
+for epoch in range(num_epochs):
+    model.train()  # 设置为训练模式
+    running_loss = 0.0
+    
+    for batch_idx, (data, target) in enumerate(dataloader):
+        # 清零梯度
+        optimizer.zero_grad()
+        
+        # 前向传播
+        outputs = model(data)
+        
+        # 计算损失
+        loss = criterion(outputs, target)
+        
+        # 反向传播
+        loss.backward()
+        
+        # 更新参数
+        optimizer.step()
+        
+        running_loss += loss.item()
+    
+    # 每个epoch打印平均损失
+    avg_loss = running_loss / len(dataloader)
+    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {avg_loss:.4f}")</code></pre>
+            
+            <h3>3. 模型保存与加载</h3>
+            <pre><code># 保存整个模型
+torch.save(model, 'model_complete.pth')
+
+# 仅保存模型参数（推荐）
+torch.save(model.state_dict(), 'model_weights.pth')
+
+# 加载整个模型
+loaded_model = torch.load('model_complete.pth')
+
+# 加载模型参数
+new_model = SimpleCNN()
+new_model.load_state_dict(torch.load('model_weights.pth'))
+new_model.eval()  # 设置为评估模式</code></pre>
+            
+            <div class="note">
+                <strong>最佳实践：</strong>通常推荐保存<code>state_dict()</code>而不是整个模型，因为这样更灵活且与代码结构解耦。
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        蓝海资料掘金营 · 深度学习部署专家课程
+    </footer>
+</body>
+</html>

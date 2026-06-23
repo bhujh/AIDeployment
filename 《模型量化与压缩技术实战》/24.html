@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模型压缩中的对抗鲁棒性 - 实战课程</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50; /* 青草绿 */
+            --secondary-color: #2196F3; /* 天空蓝 */
+            --accent-color: #FF9800; /* 活力橙 */
+            --light-color: #FFF9C4; /* 淡鹅黄 */
+            --dark-color: #333333;
+            --border-color: #8BC34A; /* 浅草绿 */
+            --bg-gradient: linear-gradient(135deg, #E3F2FD 0%, #F1F8E9 50%, #FFF3E0 100%);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background: var(--bg-gradient);
+            color: var(--dark-color);
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            border: 8px double var(--border-color);
+            border-radius: 20px;
+            background-color: rgba(255, 255, 255, 0.92);
+            box-shadow: 0 15px 35px rgba(0, 100, 0, 0.15);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+            border-bottom: 5px solid var(--accent-color);
+        }
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .subtitle {
+            font-size: 1.3rem;
+            opacity: 0.9;
+        }
+        main {
+            padding: 30px;
+        }
+        section {
+            margin-bottom: 40px;
+            padding: 25px;
+            border-left: 6px solid var(--secondary-color);
+            background-color: rgba(255, 255, 255, 0.7);
+            border-radius: 0 15px 15px 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        h2 {
+            color: var(--primary-color);
+            border-bottom: 3px dotted var(--accent-color);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+        h3 {
+            color: var(--secondary-color);
+            margin: 15px 0 10px;
+        }
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        ul, ol {
+            padding-left: 25px;
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            border: 2px solid var(--border-color);
+        }
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 12px 15px;
+            text-align: left;
+        }
+        th {
+            background-color: var(--light-color);
+            color: var(--dark-color);
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: rgba(141, 195, 74, 0.1);
+        }
+        .code-block {
+            background-color: #f5f5f5;
+            border-left: 4px solid var(--accent-color);
+            padding: 15px;
+            margin: 20px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            border-radius: 0 8px 8px 0;
+        }
+        .svg-container {
+            display: flex;
+            justify-content: center;
+            margin: 25px 0;
+        }
+        .architecture {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid var(--secondary-color);
+        }
+        footer {
+            text-align: center;
+            padding: 25px;
+            background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+            color: white;
+            font-size: 1.1rem;
+            border-top: 5px solid var(--accent-color);
+            margin-top: 20px;
+        }
+        .highlight {
+            background-color: var(--light-color);
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .note {
+            background-color: #E8F5E9;
+            border-left: 5px solid var(--primary-color);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>模型压缩中的对抗鲁棒性</h1>
+            <p class="subtitle">《模型量化与压缩技术实战》课程第24讲：压缩对模型鲁棒性的影响、鲁棒性保持的压缩方法、对抗训练与压缩结合</p>
+        </header>
+
+        <main>
+            <section>
+                <h2>一、引言：模型压缩与对抗鲁棒性的交叉挑战</h2>
+                <p>在深度学习模型部署到资源受限的边缘设备时，<span class="highlight">模型压缩</span>（如量化、剪枝、知识蒸馏）成为关键技术。然而，压缩过程可能无意中削弱模型对<span class="highlight">对抗样本</span>的鲁棒性。本讲深入探讨压缩与鲁棒性之间的复杂关系，并提供保持鲁棒性的实用压缩方法。</p>
+                <div class="svg-container">
+                    <svg width="600" height="180" viewBox="0 0 600 180">
+                        <rect x="10" y="60" width="150" height="60" rx="10" fill="#4CAF50" stroke="#2E7D32" stroke-width="2"/>
+                        <text x="85" y="95" text-anchor="middle" fill="white" font-size="16" font-weight="bold">原始模型</text>
+                        <polygon points="170,90 200,80 200,100" fill="#2196F3"/>
+                        <rect x="210" y="60" width="150" height="60" rx="10" fill="#FF9800" stroke="#EF6C00" stroke-width="2"/>
+                        <text x="285" y="95" text-anchor="middle" fill="white" font-size="16" font-weight="bold">压缩过程</text>
+                        <polygon points="370,90 400,80 400,100" fill="#2196F3"/>
+                        <rect x="410" y="60" width="150" height="60" rx="10" fill="#9C27B0" stroke="#6A1B9A" stroke-width="2"/>
+                        <text x="485" y="95" text-anchor="middle" fill="white" font-size="16" font-weight="bold">压缩模型</text>
+                        <line x1="50" y1="120" x2="50" y2="150" stroke="#F44336" stroke-width="2" stroke-dasharray="5,5"/>
+                        <text x="50" y="165" text-anchor="middle" fill="#D32F2F" font-size="14">对抗攻击</text>
+                        <line x1="285" y1="120" x2="285" y2="150" stroke="#F44336" stroke-width="2" stroke-dasharray="5,5"/>
+                        <text x="285" y="165" text-anchor="middle" fill="#D32F2F" font-size="14">鲁棒性风险</text>
+                        <line x1="485" y1="120" x2="485" y2="150" stroke="#F44336" stroke-width="2" stroke-dasharray="5,5"/>
+                        <text x="485" y="165" text-anchor="middle" fill="#D32F2F" font-size="14">鲁棒性评估</text>
+                    </svg>
+                </div>
+            </section>
+
+            <section>
+                <h2>二、压缩对模型鲁棒性的影响</h2>
+                <p>模型压缩技术主要通过减少参数精度（量化）或数量（剪枝）来减小模型大小和计算量，但这些操作可能改变模型的决策边界，从而影响其对抗鲁棒性。</p>
+                <h3>主要影响机制：</h3>
+                <ul>
+                    <li><strong>量化噪声引入</strong>：低精度表示（如INT8）引入的舍入误差可能放大对抗扰动的影响。</li>
+                    <li><strong>结构脆弱性暴露</strong>：剪枝可能移除对鲁棒性至关重要的神经元或连接，破坏模型的稳健特征。</li>
+                    <li><strong>梯度掩蔽效应</strong>：某些压缩方法可能产生平坦的梯度，使基于梯度的对抗攻击失效，但这并非真正的鲁棒性提升。</li>
+                </ul>
+                <div class="note">
+                    <strong>研究共识：</strong> 未经特殊设计的标准压缩流程通常会降低模型对对抗样本的鲁棒性，下降程度与压缩率正相关。
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>压缩方法</th>
+                            <th>对标准精度的影响</th>
+                            <th>对对抗鲁棒性的影响</th>
+                            <th>关键原因</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>后训练量化 (PTQ)</td>
+                            <td>较小下降 (&lt;2%)</td>
+                            <td>显著下降 (5-15%)</td>
+                            <td>精度损失放大对抗扰动</td>
+                        </tr>
+                        <tr>
+                            <td>量化感知训练 (QAT)</td>
+                            <td>轻微下降 (&lt;1%)</td>
+                            <td>中等下降 (3-10%)</td>
+                            <td>训练中模拟量化误差，部分保持鲁棒性</td>
+                        </tr>
+                        <tr>
+                            <td>结构化剪枝</td>
+                            <td>中等下降 (2-5%)</td>
+                            <td>显著下降 (10-20%)</td>
+                            <td>移除重要特征通道</td>
+                        </tr>
+                        <tr>
+                            <td>知识蒸馏 (KD)</td>
+                            <td>可能提升</td>
+                            <td>不定（依赖教师模型）</td>
+                            <td>继承教师模型的鲁棒性特征</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section>
+                <h2>三、鲁棒性保持的压缩方法</h2>
+                <p>为在压缩过程中保持或甚至提升模型的对抗鲁棒性，研究者提出了多种专门方法。</p>
+                <h3>3.1 鲁棒性感知的量化</h3>
+                <ul>
+                    <li><strong>对抗性量化训练</strong>：在量化训练循环中加入对抗样本，优化量化参数以同时保持精度和鲁棒性。</li>
+                    <li><strong>敏感层分析</strong>：识别对鲁棒性最敏感的网络层，对这些层采用更高精度量化。</li>
+                </ul>
+                <div class="code-block">
+<pre># 伪代码：鲁棒性感知的量化训练循环
+for epoch in range(num_epochs):
+    for batch in data_loader:
+        # 1. 生成对抗样本
+        adv_data = pgd_attack(model_quant, batch.data, batch.target)
+        
+        # 2. 前向传播（模拟量化）
+        output_clean = model_quant(batch.data)
+        output_adv = model_quant(adv_data)
+        
+        # 3. 组合损失：标准交叉熵 + 对抗损失
+        loss_clean = criterion(output_clean, batch.target)
+        loss_adv = criterion(output_adv, batch.target)
+        loss = loss_clean + beta * loss_adv
+        
+        # 4. 反向传播与优化（更新权重和量化参数）
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        
+        # 5. 更新量化范围（如适用）
+        update_quantization_ranges(model_quant)</pre>
+                </div>
+
+                <h3>3.2 鲁棒性导向的剪枝</h3>
+                <div class="svg-container">
+                    <svg width="650" height="220" viewBox="0 0 650 220" class="architecture">
+                        <rect x="50" y="30" width="200" height="60" rx="8" fill="#E3F2FD" stroke="#2196F3" stroke-width="2"/>
+                        <text x="150" y="65" text-anchor="middle" fill="#0D47A1" font-size="14" font-weight="bold">原始鲁棒模型</text>
+                        <rect x="300" y="30" width="200" height="60" rx="8" fill="#F1F8E9" stroke="#4CAF50" stroke-width="2"/>
+                        <text x="400" y="65" text-anchor="middle" fill="#1B5E20" font-size="14" font-weight="bold">鲁棒性评估</text>
+                        <rect x="50" y="130" width="200" height="60" rx="8" fill="#FFF3E0" stroke="#FF9800" stroke-width="2"/>
+                        <text x="150" y="165" text-anchor="middle" fill="#E65100" font-size="14" font-weight="bold">重要性评分</text>
+                        <rect x="300" y="130" width="200" height="60" rx="8" fill="#FCE4EC" stroke="#EC407A" stroke-width="2"/>
+                        <text x="400" y="165" text-anchor="middle" fill="#880E4F" font-size="14" font-weight="bold">迭代剪枝与微调</text>
+                        <line x1="250" y1="60" x2="300" y2="60" stroke="#666" stroke-width="2" marker-end="url(#arrow)"/>
+                        <line x1="400" y1="90" x2="400" y2="130" stroke="#666" stroke-width="2" marker-end="url(#arrow)"/>
+                        <line x1="250" y1="160" x2="300" y2="160" stroke="#666" stroke-width="2" marker-end="url(#arrow)"/>
+                        <line x1="150" y1="90" x2="150" y2="130" stroke="#666" stroke-width="2" marker-end="url(#arrow)"/>
+                        <defs>
+                            <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                                <path d="M0,0 L0,6 L9,3 z" fill="#666"/>
+                            </marker>
+                        </defs>
+                        <text x="325" y="115" text-anchor="middle" fill="#333" font-size="12">基于对抗样本的敏感度分析</text>
+                        <text x="175" y="115" text-anchor="middle" fill="#333" font-size="12">计算神经元/通道重要性</text>
+                        <text x="325" y="205" text-anchor="middle" fill="#333" font-size="12">保留高鲁棒性贡献单元</text>
+                    </svg>
+                </div>
+                <p><strong>核心策略：</strong> 基于对抗样本的梯度或激活值，识别并保留对鲁棒性贡献大的参数，移除冗余且对鲁棒性无关紧要的参数。</p>
+            </section>
+
+            <section>
+                <h2>四、对抗训练与压缩的结合策略</h2>
+                <p>对抗训练（Adversarial Training）是提升模型鲁棒性的最有效方法之一。将其与模型压缩结合，可产生高效且鲁棒的紧凑模型。</p>
+                <h3>4.1 集成训练框架</h3>
+                <ol>
+                    <li><strong>先对抗训练后压缩</strong>：先训练一个鲁棒的完整模型，再应用鲁棒性感知的压缩方法。</li>
+                    <li><strong>联合对抗训练与压缩</strong>：在压缩训练过程中直接集成对抗样本生成与优化。</li>
+                    <li><strong>对抗性蒸馏</strong>：使用鲁棒的教师模型指导轻量学生模型的训练，传递鲁棒性知识。</li>
+                </ol>
+                <h3>4.2 实践建议与代码示例</h3>
+                <div class="code-block">
+<pre># 示例：结合对抗训练的量化感知训练（简化版）
+import torch
+import torch.nn as nn
+from torch.quantization import QuantStub, DeQuantStub
+
+class RobustQuantModel(nn.Module):
+    def __init__(self, base_model):
+        super().__init__()
+        self.quant = QuantStub()
+        self.dequant = DeQuantStub()
+        self.model = base_model
+        
+    def forward(self, x):
+        x = self.quant(x)
+        x = self.model(x)
+        x = self.dequant(x)
+        return x
+    
+    def adversarial_loss(self, x, y, epsilon=0.03, alpha=0.01, iters=10):
+        """生成PGD对抗样本并计算损失"""
+        orig_x = x.clone().detach()
+        # 初始随机扰动
+        x = x + torch.empty_like(x).uniform_(-epsilon, epsilon)
+        x = torch.clamp(x, 0, 1)
+        
+        for _ in range(iters):
+            x.requires_grad_(True)
+            output = self.forward(x)
+            loss = nn.functional.cross_entropy(output, y)
+            grad = torch.autograd.grad(loss, x)[0]
+            # PGD攻击步
+            x = x.detach() + alpha * grad.sign()
+            delta = torch.clamp(x - orig_x, -epsilon, epsilon)
+            x = torch.clamp(orig_x + delta, 0, 1).detach()
+        
+        adv_output = self.forward(x)
+        return nn.functional.cross_entropy(adv_output, y)
+
+# 训练循环中
+model = RobustQuantModel(base_cnn)
+model.qconfig = torch.quantization.get_default_qat_qconfig('fbgemm')
+torch.quantization.prepare_qat(model, inplace=True)
+
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+for data, target in train_loader:
+    optimizer.zero_grad()
+    # 标准损失
+    output = model(data)
+    loss_clean = nn.functional.cross_entropy(output, target)
+    # 对抗损失
+    loss_adv = model.adversarial_loss(data, target)
+    # 组合损失
+    loss = loss_clean + 0.5 * loss_adv
+    loss.backward()
+    optimizer.step()
+
+# 最终转换为量化模型
+model.eval()
+torch.quantization.convert(model, inplace=True)</pre>
+                </div>
+            </section>
+
+            <section>
+                <h2>五、总结与未来方向</h2>
+                <ul>
+                    <li><strong>核心平衡</strong>：模型压缩与对抗鲁棒性之间存在内在权衡，需要精心设计的方法来维持平衡。</li>
+                    <li><strong>方法选择</strong>：对于安全关键应用，推荐采用鲁棒性感知的量化或剪枝，并结合对抗训练。</li>
+                    <li><strong>评估指标</strong>：压缩后必须同时评估标准精度和对抗精度（如PGD、AutoAttack下的准确率）。</li>
+                    <li><strong>新兴方向</strong>：
+                        <ul>
+                            <li>自适应压缩策略，根据输入样本动态调整压缩强度。</li>
+                            <li>利用神经架构搜索（NAS）直接搜索既紧凑又鲁棒的模型结构。</li>
+                            <li>研究后门攻击与模型压缩的交互影响。</li>
+                        </ul>
+                    </li>
+                </ul>
+                <div class="note">
+                    <strong>实战要点：</strong> 在实际部署中，建议建立“压缩-鲁棒性评估”闭环流水线，对每个压缩配置进行全面的对抗测试，确保模型在缩小体积的同时不牺牲安全性。
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>公众号: 蓝海资料掘金营，微信 deep3321</p>
+            <p>《模型量化与压缩技术实战》课程 - 第24讲：模型压缩中的对抗鲁棒性</p>
+            <p>© 2026 深度学习工程实践系列课程 | 知识共享，实践创新</p>
+        </footer>
+    </div>
+</body>
+</html>

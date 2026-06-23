@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>神经网络架构搜索与压缩 - 模型量化与压缩技术实战</title>
+    <style>
+        :root {
+            --primary: #FFD166; /* 明黄 */
+            --secondary: #06D6A0; /* 翠绿 */
+            --accent: #118AB2; /* 天蓝 */
+            --light: #FFE8D6; /* 浅橙 */
+            --dark: #073B4C; /* 深蓝 */
+            --text: #333333;
+            --border: #EF476F; /* 粉红 */
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, var(--light) 0%, #ffffff 100%);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.92);
+            border: 8px double var(--border);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(7, 59, 76, 0.15);
+            overflow: hidden;
+            padding: 30px;
+        }
+        header {
+            text-align: center;
+            padding: 30px 20px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border-radius: 15px;
+            margin-bottom: 40px;
+            color: var(--dark);
+            border: 4px solid var(--accent);
+        }
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 0px rgba(255, 255, 255, 0.8);
+        }
+        .subtitle {
+            font-size: 1.3rem;
+            color: var(--dark);
+            font-weight: 500;
+        }
+        h2 {
+            color: var(--accent);
+            border-left: 6px solid var(--secondary);
+            padding-left: 15px;
+            margin: 40px 0 20px;
+            font-size: 1.8rem;
+        }
+        h3 {
+            color: var(--dark);
+            margin: 25px 0 15px;
+            font-size: 1.4rem;
+        }
+        p {
+            margin-bottom: 18px;
+            text-align: justify;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 3px solid var(--primary);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.05);
+            transition: transform 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        ul, ol {
+            padding-left: 25px;
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 2px solid var(--light);
+        }
+        th {
+            background-color: var(--secondary);
+            color: white;
+            font-weight: 600;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .svg-container {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+        }
+        svg {
+            max-width: 100%;
+            height: auto;
+        }
+        pre {
+            background: #f8f9fa;
+            border-left: 5px solid var(--accent);
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: var(--dark);
+        }
+        code {
+            background-color: #e9f7fe;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: var(--accent);
+        }
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 25px;
+            background: linear-gradient(90deg, var(--dark), var(--accent));
+            color: white;
+            border-radius: 15px;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+            border-top: 6px double var(--primary);
+        }
+        .highlight {
+            background-color: var(--primary);
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .architecture {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+        .arch-item {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            border: 3px solid var(--secondary);
+        }
+        .arch-title {
+            font-weight: bold;
+            color: var(--dark);
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>神经网络架构搜索与压缩</h1>
+            <div class="subtitle">NAS基本原理、One-shot NAS、可微分NAS、NAS用于自动模型轻量化</div>
+            <div class="subtitle">《模型量化与压缩技术实战》第21讲</div>
+        </header>
+
+        <section>
+            <h2>一、NAS（神经网络架构搜索）基本原理</h2>
+            <div class="card">
+                <p><span class="highlight">神经网络架构搜索（NAS）</span>是一种自动化设计神经网络结构的技术，旨在替代手工设计，自动寻找在给定任务（如分类、检测）上性能更优、效率更高的网络架构。</p>
+                <h3>核心三要素：</h3>
+                <ul>
+                    <li><strong>搜索空间（Search Space）</strong>：定义待搜索的神经网络组件（如卷积类型、层数、通道数等）的组合范围。</li>
+                    <li><strong>搜索策略（Search Strategy）</strong>：采用何种算法在搜索空间中探索，如强化学习、进化算法、随机搜索、梯度优化等。</li>
+                    <li><strong>性能评估策略（Evaluation Strategy）</strong>：如何快速、准确地评估候选架构的性能，通常涉及代理指标（如验证准确率）与效率权衡。</li>
+                </ul>
+                <div class="svg-container">
+                    <svg width="600" height="200" viewBox="0 0 600 200">
+                        <rect x="50" y="80" width="120" height="60" rx="10" fill="var(--primary)" stroke="var(--dark)" stroke-width="2"/>
+                        <text x="110" y="115" text-anchor="middle" fill="var(--dark)" font-weight="bold">搜索空间</text>
+                        <path d="M 170 110 L 230 110" stroke="var(--accent)" stroke-width="3" marker-end="url(#arrow)"/>
+                        <rect x="230" y="80" width="120" height="60" rx="10" fill="var(--secondary)" stroke="var(--dark)" stroke-width="2"/>
+                        <text x="290" y="115" text-anchor="middle" fill="white" font-weight="bold">搜索策略</text>
+                        <path d="M 350 110 L 410 110" stroke="var(--accent)" stroke-width="3" marker-end="url(#arrow)"/>
+                        <rect x="410" y="80" width="120" height="60" rx="10" fill="var(--accent)" stroke="var(--dark)" stroke-width="2"/>
+                        <text x="470" y="115" text-anchor="middle" fill="white" font-weight="bold">性能评估</text>
+                        <defs>
+                            <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                                <path d="M0,0 L0,6 L9,3 z" fill="var(--accent)"/>
+                            </marker>
+                        </defs>
+                    </svg>
+                </div>
+                <p>传统NAS方法（如基于RL或进化算法）需要训练成千上万个候选模型，计算成本极高（数千GPU days）。近年来，<span class="highlight">权重共享</span>与<span class="highlight">可微分搜索</span>成为降低计算成本的主流方向。</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>二、One-shot NAS（单次传递NAS）</h2>
+            <div class="card">
+                <p>One-shot NAS 的核心思想是：<strong>训练一个超网（Supernet），其包含所有可能的子架构（子网络），通过权重共享，只需训练一次超网，即可评估任意子网络的性能</strong>。</p>
+                <h3>典型流程：</h3>
+                <ol>
+                    <li><strong>超网构建</strong>：定义一个包含所有候选操作（如3x3卷积、5x5卷积、池化等）的图结构，每个位置是一个混合操作。</li>
+                    <li><strong>超网训练</strong>：在训练集上训练整个超网，使共享权重能够适应不同的子路径。</li>
+                    <li><strong>架构搜索</strong>：使用某种搜索策略（如随机采样、进化算法）在超网中采样子网络，并利用共享权重快速评估其性能（无需单独训练）。</li>
+                    <li><strong>重新训练</strong>：将搜索到的最佳架构从头训练，得到最终模型。</li>
+                </ol>
+                <div class="svg-container">
+                    <svg width="600" height="300" viewBox="0 0 600 300">
+                        <rect x="50" y="30" width="500" height="60" rx="10" fill="#FFE8D6" stroke="var(--dark)" stroke-width="2"/>
+                        <text x="300" y="65" text-anchor="middle" fill="var(--dark)" font-weight="bold">超网（Supernet）训练</text>
+                        <path d="M 300 90 L 300 140" stroke="var(--border)" stroke-width="3" stroke-dasharray="5,5"/>
+                        <rect x="150" y="140" width="300" height="60" rx="10" fill="#06D6A0" stroke="var(--dark)" stroke-width="2"/>
+                        <text x="300" y="175" text-anchor="middle" fill="white" font-weight="bold">子网络采样与评估</text>
+                        <path d="M 300 200 L 300 250" stroke="var(--border)" stroke-width="3" stroke-dasharray="5,5"/>
+                        <rect x="200" y="250" width="200" height="40" rx="8" fill="#118AB2" stroke="var(--dark)" stroke-width="2"/>
+                        <text x="300" y="275" text-anchor="middle" fill="white" font-weight="bold">最佳架构重训练</text>
+                    </svg>
+                </div>
+                <h3>优点与缺点：</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>优点</th>
+                            <th>缺点</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>大幅降低搜索成本（从千级GPU days降至数个）</td>
+                            <td>超网训练仍需要大量计算与内存</td>
+                        </tr>
+                        <tr>
+                            <td>权重共享使评估速度极快</td>
+                            <td>权重共享可能带来评估偏差（训练-测试不一致）</td>
+                        </tr>
+                        <tr>
+                            <td>可灵活支持不同的搜索空间</td>
+                            <td>搜索出的架构通常需要重新训练才能达到最优性能</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section>
+            <h2>三、可微分NAS（Differentiable NAS）</h2>
+            <div class="card">
+                <p>可微分NAS将架构搜索转化为一个可微分优化问题，通过梯度下降同时优化网络权重和架构参数。</p>
+                <h3>代表方法：DARTS（Differentiable Architecture Search）</h3>
+                <p>DARTS 将每个节点之间的操作选择松弛为连续变量，使用 softmax 加权求和，从而使得整个搜索空间可微。</p>
+                <pre><code># 简化版 DARTS 混合操作计算
+import torch
+import torch.nn as nn
+
+class MixedOp(nn.Module):
+    def __init__(self, candidate_ops):
+        super().__init__()
+        self.ops = nn.ModuleList(candidate_ops)
+        self.alpha = nn.Parameter(torch.randn(len(candidate_ops)))  # 架构参数
+
+    def forward(self, x):
+        weights = torch.softmax(self.alpha, dim=0)  # 将α转化为概率分布
+        return sum(w * op(x) for w, op in zip(weights, self.ops))</code></pre>
+                <p>优化过程分为两个交替步骤：</p>
+                <ol>
+                    <li><strong>更新网络权重</strong>：固定架构参数 α，在训练集上通过梯度下降更新权重 w。</li>
+                    <li><strong>更新架构参数</strong>：固定权重 w，在验证集上通过梯度下降更新 α。</li>
+                </ol>
+                <p>搜索结束后，根据 α 的值选择概率最高的操作，得到离散的最终架构。</p>
+                <div class="architecture">
+                    <div class="arch-item">
+                        <div class="arch-title">DARTS 流程</div>
+                        <ol>
+                            <li>构建连续松弛的超网</li>
+                            <li>交替优化权重与架构参数</li>
+                            <li>根据α离散化得到最终架构</li>
+                            <li>从头训练最终架构</li>
+                        </ol>
+                    </div>
+                    <div class="arch-item">
+                        <div class="arch-title">优势</div>
+                        <ul>
+                            <li>搜索效率高（GPU days 级别）</li>
+                            <li>理论优雅，端到端可微</li>
+                            <li>适合中小规模数据集</li>
+                        </ul>
+                    </div>
+                    <div class="arch-item">
+                        <div class="arch-title">挑战</div>
+                        <ul>
+                            <li>内存消耗大（需存储所有候选操作）</li>
+                            <li>可能存在搜索崩溃（skip-connect 主导）</li>
+                            <li>离散化后性能可能下降</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>四、NAS用于自动模型轻量化</h2>
+            <div class="card">
+                <p>将NAS与模型压缩目标（如参数量、计算量FLOPs、延迟）结合，可自动搜索出高性能、低成本的轻量化模型。</p>
+                <h3>常见技术路线：</h3>
+                <ul>
+                    <li><strong>多目标NAS</strong>：在损失函数中加入模型大小、计算量等约束项，如 <code>Loss = CrossEntropy + λ * FLOPs</code>。</li>
+                    <li><strong>硬件感知NAS</strong>：在搜索时直接测量或预估目标硬件（如手机、嵌入式设备）上的实际延迟、功耗，并将其作为优化目标。</li>
+                    <li><strong>压缩感知NAS</strong>：在搜索空间中直接集成轻量化组件（如深度可分离卷积、通道剪枝、量化操作），让搜索过程自动选择高效结构。</li>
+                </ul>
+                <div class="svg-container">
+                    <svg width="600" height="350" viewBox="0 0 600 350">
+                        <rect x="100" y="20" width="400" height="60" rx="10" fill="var(--primary)" stroke="var(--dark)" stroke-width="2"/>
+                        <text x="300" y="55" text-anchor="middle" fill="var(--dark)" font-weight="bold">轻量化搜索空间设计</text>
+                        <path d="M 300 80 L 300 120" stroke="var(--accent)" stroke-width="3" marker-end="url(#arrow2)"/>
+                        <rect x="100" y="120" width="400" height="60" rx="10" fill="var(--secondary)" stroke="var(--dark)" stroke-width="2"/>
+                        <text x="300" y="155" text-anchor="middle" fill="white" font-weight="bold">多目标优化（精度+效率）</text>
+                        <path d="M 300 180 L 300 220" stroke="var(--accent)" stroke-width="3" marker-end="url(#arrow2)"/>
+                        <rect x="100" y="220" width="400" height="60" rx="10" fill="var(--accent)" stroke="var(--dark)" stroke-width="2"/>
+                        <text x="300" y="255" text-anchor="middle" fill="white" font-weight="bold">硬件感知评估与部署</text>
+                        <defs>
+                            <marker id="arrow2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                                <path d="M0,0 L0,6 L9,3 z" fill="var(--accent)"/>
+                            </marker>
+                        </defs>
+                    </svg>
+                </div>
+                <h3>典型工作对比：</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>方法</th>
+                            <th>核心思想</th>
+                            <th>轻量化目标</th>
+                            <th>搜索成本</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>MobileNetV3</strong></td>
+                            <td>NAS + NetAdapt 联合搜索</td>
+                            <td>参数量、延迟（手机）</td>
+                            <td>数千 GPU hours</td>
+                        </tr>
+                        <tr>
+                            <td><strong>EfficientNet</strong></td>
+                            <td>复合缩放系数 + NAS</td>
+                            <td>FLOPs、参数量</td>
+                            <td>数千 GPU days</td>
+                        </tr>
+                        <tr>
+                            <td><strong>ProxylessNAS</strong></td>
+                            <td>硬件感知的可微分NAS</td>
+                            <td>延迟、内存占用</td>
+                            <td>数十 GPU days</td>
+                        </tr>
+                        <tr>
+                            <td><strong>FBNet</strong></td>
+                            <td>硬件在环（HAL）搜索</td>
+                            <td>实际硬件延迟</td>
+                            <td>数百 GPU hours</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p>实践建议：对于工业部署，可结合 <span class="highlight">One-shot NAS</span> 进行快速原型搜索，再使用 <span class="highlight">硬件感知微调</span>，在目标设备上进一步优化延迟与能效。</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>五、总结与展望</h2>
+            <div class="card">
+                <p>NAS 已成为自动化机器学习（AutoML）的核心组成部分，尤其在模型轻量化领域展现出巨大潜力。未来趋势包括：</p>
+                <ul>
+                    <li><strong>零成本NAS</strong>：无需训练即可评估架构性能（如基于网络态射、初始化性能预测）。</li>
+                    <li><strong>跨任务/跨平台NAS</strong>：搜索出的架构能够快速迁移到不同任务或硬件平台。</li>
+                    <li><strong>NAS与量化/剪枝联合优化</strong>：将压缩技术直接嵌入搜索空间，实现端到端的轻量化模型生成。</li>
+                    <li><strong>绿色NAS</strong>：关注搜索过程的能耗与碳排放，发展更环保的自动化设计方法。</li>
+                </ul>
+                <p>掌握NAS技术，能够帮助工程师在资源受限的场景下，自动设计出兼顾精度与效率的神经网络，是模型压缩与部署的关键技能。</p>
+            </div>
+        </section>
+
+        <footer>
+            公众号:蓝海资料掘金营，微信deep3321
+        </footer>
+    </div>
+</body>
+</html>

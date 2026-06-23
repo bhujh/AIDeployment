@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模型量化与压缩技术实战 - 课程目录</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px 20px;
+            background: linear-gradient(90deg, #4CAF50, #2196F3);
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(33, 150, 243, 0.2);
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 30px 30px;
+            z-index: 0;
+        }
+
+        header h1 {
+            font-size: 2.8rem;
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 1;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        header p {
+            font-size: 1.2rem;
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+            opacity: 0.95;
+        }
+
+        .course-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 1;
+            color: #FFEB3B;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .view-btn {
+            padding: 12px 25px;
+            background: white;
+            border: none;
+            border-radius: 50px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #2196F3;
+        }
+
+        .view-btn.active {
+            background: #2196F3;
+            color: white;
+            transform: translateY(-3px);
+        }
+
+        .view-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+
+        .directory-container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+            margin-bottom: 40px;
+            transition: all 0.3s ease;
+        }
+
+        /* 列表视图 */
+        .list-view {
+            display: block;
+        }
+
+        .list-view .chapter-item {
+            padding: 20px;
+            border-left: 6px solid #4CAF50;
+            margin-bottom: 15px;
+            background: #f9f9f9;
+            border-radius: 0 15px 15px 0;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+        }
+
+        .list-view .chapter-item:hover {
+            background: #e8f5e9;
+            transform: translateX(10px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.2);
+        }
+
+        .list-view .chapter-num {
+            background: #4CAF50;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-right: 20px;
+            flex-shrink: 0;
+        }
+
+        .list-view .chapter-content {
+            flex-grow: 1;
+        }
+
+        .list-view .chapter-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #2196F3;
+        }
+
+        .list-view .chapter-desc {
+            color: #666;
+            font-size: 0.95rem;
+        }
+
+        /* 卡片视图 */
+        .card-view {
+            display: none;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 25px;
+        }
+
+        .card-view .chapter-card {
+            background: linear-gradient(145deg, #ffffff, #f0f0f0);
+            border-radius: 18px;
+            padding: 25px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            transition: all 0.4s ease;
+            border-top: 8px solid #FF9800;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-view .chapter-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(255, 152, 0, 0.15);
+        }
+
+        .card-view .chapter-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(90deg, #FF9800, #FFEB3B);
+        }
+
+        .card-view .chapter-num {
+            background: #FF9800;
+            color: white;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .card-view .chapter-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 12px;
+            color: #2196F3;
+            line-height: 1.4;
+        }
+
+        .card-view .chapter-desc {
+            color: #666;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        /* 表格视图 */
+        .table-view {
+            display: none;
+            width: 100%;
+            border-collapse: collapse;
+            overflow: hidden;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+
+        .table-view thead {
+            background: linear-gradient(90deg, #2196F3, #4CAF50);
+            color: white;
+        }
+
+        .table-view th {
+            padding: 20px 15px;
+            text-align: left;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .table-view tbody tr {
+            border-bottom: 1px solid #eee;
+            transition: all 0.3s ease;
+        }
+
+        .table-view tbody tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .table-view tbody tr:hover {
+            background-color: #e3f2fd;
+            transform: scale(1.005);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .table-view td {
+            padding: 18px 15px;
+            vertical-align: top;
+        }
+
+        .table-view .chap-num {
+            font-weight: bold;
+            color: #2196F3;
+            font-size: 1.1rem;
+            width: 60px;
+        }
+
+        .table-view .chap-title {
+            font-weight: bold;
+            color: #333;
+            font-size: 1.1rem;
+        }
+
+        .table-view .chap-desc {
+            color: #666;
+            font-size: 0.95rem;
+        }
+
+        .link-icon {
+            color: #4CAF50;
+            margin-left: 10px;
+            font-size: 0.9rem;
+            transition: transform 0.3s ease;
+        }
+
+        .chapter-item:hover .link-icon,
+        .chapter-card:hover .link-icon,
+        .table-view tbody tr:hover .link-icon {
+            transform: translateX(5px);
+        }
+
+        footer {
+            text-align: center;
+            padding: 25px;
+            color: #666;
+            font-size: 1rem;
+            border-top: 2px dashed #ccc;
+            margin-top: 30px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 15px;
+        }
+
+        footer a {
+            color: #2196F3;
+            text-decoration: none;
+            font-weight: bold;
+            transition: color 0.3s ease;
+        }
+
+        footer a:hover {
+            color: #FF9800;
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .card-view {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .view-btn {
+                width: 100%;
+                max-width: 300px;
+                justify-content: center;
+            }
+            
+            header h1 {
+                font-size: 2rem;
+            }
+            
+            .table-view {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="course-icon">
+                <i class="fas fa-robot"></i>
+            </div>
+            <h1>模型量化与压缩技术实战</h1>
+            <p>深入掌握深度学习模型优化核心技能，从理论到实战，打造高性能AI应用</p>
+        </header>
+
+        <div class="controls">
+            <button class="view-btn active" id="listBtn">
+                <i class="fas fa-list"></i> 列表视图
+            </button>
+            <button class="view-btn" id="cardBtn">
+                <i class="fas fa-th-large"></i> 卡片视图
+            </button>
+            <button class="view-btn" id="tableBtn">
+                <i class="fas fa-table"></i> 表格视图
+            </button>
+        </div>
+
+        <div class="directory-container">
+            <!-- 列表视图 -->
+            <div class="list-view" id="listView">
+                <!-- 章节列表将通过JavaScript动态生成 -->
+            </div>
+
+            <!-- 卡片视图 -->
+            <div class="card-view" id="cardView">
+                <!-- 章节卡片将通过JavaScript动态生成 -->
+            </div>
+
+            <!-- 表格视图 -->
+            <table class="table-view" id="tableView">
+                <thead>
+                    <tr>
+                        <th width="80">章节</th>
+                        <th>标题</th>
+                        <th>内容概要</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- 表格行将通过JavaScript动态生成 -->
+                </tbody>
+            </table>
+        </div>
+
+        <footer>
+            <p>公众号:蓝海资料掘金营，微信deep3321 | 课程资料持续更新中，欢迎关注获取最新内容</p>
+            <p>© 2026 模型量化与压缩技术实战课程 | 让AI模型更轻、更快、更强</p>
+        </footer>
+    </div>
+
+    <script>
+        // 课程目录数据
+        const chapters = [
+            {num: "01", title: "课程导论", desc: "模型量化与压缩技术概述、技术演进史、应用场景与价值、课程学习路线图。"},
+            {num: "02", title: "深度学习模型基础回顾", desc: "模型结构与参数、前向传播与反向传播、模型评估指标、常见模型架构。"},
+            {num: "03", title: "模型压缩技术全景图", desc: "剪枝、量化、知识蒸馏、低秩分解、轻量化网络设计等核心方法对比。"},
+            {num: "04", title: "模型量化原理深入", desc: "量化基本概念、均匀量化与非均匀量化、对称量化与非对称量化、量化误差分析。"},
+            {num: "05", title: "后训练量化实战", desc: "PTQ流程详解、校准集选择与使用、TensorRT/PyTorch PTQ API实战、精度评估与调优。"},
+            {num: "06", title: "量化感知训练实战", desc: "QAT原理与优势、在训练图中插入伪量化节点、PyTorch QAT实战、超参数调整策略。"},
+            {num: "07", title: "权重量化与激活量化", desc: "权重量化策略、激活量化挑战与解决方案、混合精度量化、逐层与逐通道量化。"},
+            {num: "08", title: "INT8量化全流程实战", desc: "从FP32模型到INT8模型的完整转换流程、端侧部署INT8模型、性能基准测试。"},
+            {num: "09", title: "模型剪枝技术原理", desc: "结构化剪枝与非结构化剪枝、基于重要性的剪枝、基于梯度的剪枝、剪枝率与稀疏性控制。"},
+            {num: "10", title: "结构化剪枝实战", desc: "通道剪枝、滤波器剪枝、使用PyTorch实现结构化剪枝、剪枝后的模型微调。"},
+            {num: "11", title: "非结构化剪枝与稀疏化", desc: "权重稀疏化、掩码生成与更新、稀疏矩阵存储与计算优化、稀疏训练技巧。"},
+            {num: "12", title: "知识蒸馏技术原理", desc: "教师-学生模型框架、软标签与硬标签、损失函数设计、特征蒸馏与注意力蒸馏。"},
+            {num: "13", title: "知识蒸馏实战", desc: "使用PyTorch实现分类模型蒸馏、蒸馏温度调节、学生网络设计、蒸馏效果评估。"},
+            {num: "14", title: "低秩分解技术", desc: "矩阵分解原理、SVD分解在模型压缩中的应用、卷积核分解、 Tucker分解与CP分解。"},
+            {num: "15", title: "轻量化网络架构设计", desc: "MobileNet系列、ShuffleNet系列、EfficientNet、模型设计原则与权衡。"},
+            {num: "16", title: "TensorRT模型优化与部署", desc: "TensorRT简介、ONNX模型转换、TensorRT Builder配置、推理引擎构建与测试。"},
+            {num: "17", title: "OpenVINO模型部署实战", desc: "OpenVINO工具套件介绍、模型优化器使用、推理引擎API调用、性能分析与调优。"},
+            {num: "18", title: "TFLite模型量化与部署", desc: "TFLite转换器、Post-training quantization、Quantization-aware training、Android/iOS集成。"},
+            {num: "19", title: "ONNX与模型格式转换", desc: "ONNX格式详解、PyTorch/TensorFlow到ONNX转换、ONNX模型优化、跨框架部署。"},
+            {num: "20", title: "模型压缩工具链概览", desc: "NNCF、Distiller、PocketFlow、MNN、NCNN等工具对比与选型。"},
+            {num: "21", title: "神经网络架构搜索与压缩", desc: "NAS基本原理、One-shot NAS、可微分NAS、NAS用于自动模型轻量化。"},
+            {num: "22", title: "二值化与三值化网络", desc: "XNOR-Net、DoReFa-Net、TWN、极端量化下的训练技巧与精度恢复。"},
+            {num: "23", title: "硬件友好的量化设计", desc: "针对特定硬件（如NPU、DSP）的量化策略、内存带宽优化、计算加速原理。"},
+            {num: "24", title: "模型压缩中的对抗鲁棒性", desc: "压缩对模型鲁棒性的影响、鲁棒性保持的压缩方法、对抗训练与压缩结合。"},
+            {num: "25", title: "视觉Transformer模型压缩", desc: "ViT模型特点、Transformer结构的量化与剪枝策略、轻量化ViT设计。"},
+            {num: "26", title: "自然语言处理模型压缩", desc: "BERT等预训练模型压缩、词嵌入量化、注意力机制剪枝、蒸馏TinyBERT实战。"},
+            {num: "27", title: "模型压缩效果评估体系", desc: "压缩率、加速比、精度损失、硬件实测指标、综合评估方法论。"},
+            {num: "28", title: "端侧AI模型优化全案例", desc: "从云训练模型到手机端部署的完整优化流水线实战。"},
+            {num: "29", title: "行业应用案例剖析", desc: "安防、自动驾驶、移动端APP、IoT设备中的模型压缩实战解析。"},
+            {num: "30", title: "前沿趋势与课程总结", desc: "最新研究进展（如LLM量化）、自动化压缩、未来方向、课程知识体系回顾与展望。"}
+        ];
+
+        // 生成列表视图
+        const listView = document.getElementById('listView');
+        chapters.forEach(chapter => {
+            const item = document.createElement('a');
+            item.href = `${chapter.num}.html`;
+            item.className = 'chapter-item';
+            item.innerHTML = `
+                <div class="chapter-num">${chapter.num}</div>
+                <div class="chapter-content">
+                    <div class="chapter-title">${chapter.title} <i class="fas fa-external-link-alt link-icon"></i></div>
+                    <div class="chapter-desc">${chapter.desc}</div>
+                </div>
+            `;
+            listView.appendChild(item);
+        });
+
+        // 生成卡片视图
+        const cardView = document.getElementById('cardView');
+        chapters.forEach(chapter => {
+            const card = document.createElement('a');
+            card.href = `${chapter.num}.html`;
+            card.className = 'chapter-card';
+            card.innerHTML = `
+                <div class="chapter-num">${chapter.num}</div>
+                <div class="chapter-title">${chapter.title} <i class="fas fa-external-link-alt link-icon"></i></div>
+                <div class="chapter-desc">${chapter.desc}</div>
+            `;
+            cardView.appendChild(card);
+        });
+
+        // 生成表格视图
+        const tableBody = document.querySelector('#tableView tbody');
+        chapters.forEach(chapter => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="chap-num">${chapter.num}</td>
+                <td class="chap-title"><a href="${chapter.num}.html" style="color:inherit;text-decoration:none;">${chapter.title} <i class="fas fa-external-link-alt link-icon"></i></a></td>
+                <td class="chap-desc">${chapter.desc}</td>
+            `;
+            tableBody.appendChild(row);
+        });
+
+        // 视图切换功能
+        const listBtn = document.getElementById('listBtn');
+        const cardBtn = document.getElementById('cardBtn');
+        const tableBtn = document.getElementById('tableBtn');
+        const listViewEl = document.getElementById('listView');
+        const cardViewEl = document.getElementById('cardView');
+        const tableViewEl = document.getElementById('tableView');
+
+        function setActiveView(viewType) {
+            // 重置所有按钮
+            listBtn.classList.remove('active');
+            cardBtn.classList.remove('active');
+            tableBtn.classList.remove('active');
+            
+            // 隐藏所有视图
+            listViewEl.style.display = 'none';
+            cardViewEl.style.display = 'none';
+            tableViewEl.style.display = 'none';
+            
+            // 显示选中的视图并激活对应按钮
+            if (viewType === 'list') {
+                listViewEl.style.display = 'block';
+                listBtn.classList.add('active');
+            } else if (viewType === 'card') {
+                cardViewEl.style.display = 'grid';
+                cardBtn.classList.add('active');
+            } else if (viewType === 'table') {
+                tableViewEl.style.display = 'table';
+                tableBtn.classList.add('active');
+            }
+            
+            // 保存用户偏好到本地存储
+            localStorage.setItem('preferredView', viewType);
+        }
+
+        // 按钮点击事件
+        listBtn.addEventListener('click', () => setActiveView('list'));
+        cardBtn.addEventListener('click', () => setActiveView('card'));
+        tableBtn.addEventListener('click', () => setActiveView('table'));
+
+        // 页面加载时检查本地存储中的用户偏好
+        document.addEventListener('DOMContentLoaded', () => {
+            const preferredView = localStorage.getItem('preferredView') || 'list';
+            setActiveView(preferredView);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyTorch模型部署实战：环境搭建</title>
+    <style>
+        :root {
+            --primary: #4CAF50; /* 青草绿 */
+            --secondary: #2196F3; /* 天空蓝 */
+            --accent: #FF9800; /* 活力橙 */
+            --light: #FFF9C4; /* 淡鹅黄 */
+            --background: #F5F5F5; /* 浅灰背景 */
+            --text: #333333;
+            --card-bg: white;
+        }
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 2rem 1rem;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1 {
+            margin: 0;
+            font-size: 2.5rem;
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-top: 0.5rem;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+            border-left: 6px solid var(--accent);
+        }
+        h2 {
+            color: var(--secondary);
+            border-bottom: 2px dashed var(--primary);
+            padding-bottom: 0.5rem;
+            margin-top: 0;
+        }
+        h3 {
+            color: var(--primary);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px 15px;
+            text-align: left;
+        }
+        th {
+            background-color: var(--light);
+            color: var(--text);
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        code, pre {
+            font-family: 'Consolas', 'Monaco', monospace;
+            background-color: #f4f4f4;
+            border-radius: 6px;
+            padding: 0.2rem 0.5rem;
+        }
+        pre {
+            padding: 1rem;
+            overflow-x: auto;
+            border-left: 4px solid var(--secondary);
+            white-space: pre-wrap;
+        }
+        ul, ol {
+            padding-left: 1.5rem;
+        }
+        li {
+            margin-bottom: 0.5rem;
+        }
+        .svg-container {
+            text-align: center;
+            margin: 2rem 0;
+            background: white;
+            padding: 1rem;
+            border-radius: 10px;
+        }
+        .architecture-svg {
+            width: 100%;
+            max-width: 800px;
+            height: auto;
+        }
+        .step {
+            background: var(--light);
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        footer {
+            text-align: center;
+            padding: 2rem;
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            color: white;
+            margin-top: 3rem;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        .tip {
+            background-color: #E8F5E9;
+            border-left: 4px solid var(--primary);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .command {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>PyTorch模型部署实战</h1>
+        <div class="subtitle">第二讲：环境搭建 — CUDA、cuDNN、PyTorch GPU、ONNX与TensorRT</div>
+    </header>
+
+    <div class="container">
+        <div class="card">
+            <h2>课程目标</h2>
+            <p>本讲将系统性地搭建PyTorch模型部署所需的完整GPU环境。我们将从驱动开始，逐步安装CUDA工具包、cuDNN加速库、PyTorch GPU版本、ONNX生态工具，最后完成TensorRT的安装与验证。确保您拥有一个稳定、高效的深度学习部署开发环境。</p>
+        </div>
+
+        <div class="card">
+            <h2>环境架构总览</h2>
+            <div class="svg-container">
+                <svg class="architecture-svg" viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+                    <!-- 背景框 -->
+                    <rect x="10" y="10" width="780" height="280" rx="10" fill="white" stroke="#4CAF50" stroke-width="2"/>
+                    
+                    <!-- 层级 -->
+                    <rect x="50" y="60" width="120" height="50" rx="5" fill="#2196F3" stroke="#0d47a1" stroke-width="1"/>
+                    <text x="110" y="90" text-anchor="middle" fill="white" font-weight="bold">硬件与驱动</text>
+                    
+                    <rect x="220" y="60" width="120" height="50" rx="5" fill="#4CAF50" stroke="#2E7D32" stroke-width="1"/>
+                    <text x="280" y="90" text-anchor="middle" fill="white" font-weight="bold">CUDA + cuDNN</text>
+                    
+                    <rect x="390" y="60" width="120" height="50" rx="5" fill="#FF9800" stroke="#EF6C00" stroke-width="1"/>
+                    <text x="450" y="90" text-anchor="middle" fill="white" font-weight="bold">PyTorch GPU</text>
+                    
+                    <rect x="560" y="60" width="120" height="50" rx="5" fill="#9C27B0" stroke="#6A1B9A" stroke-width="1"/>
+                    <text x="620" y="90" text-anchor="middle" fill="white" font-weight="bold">ONNX 生态</text>
+                    
+                    <rect x="310" y="150" width="180" height="50" rx="5" fill="#F44336" stroke="#C62828" stroke-width="1"/>
+                    <text x="400" y="180" text-anchor="middle" fill="white" font-weight="bold">TensorRT 推理引擎</text>
+                    
+                    <!-- 连接线 -->
+                    <path d="M130 85 L220 85" stroke="#666" stroke-width="2" fill="none"/>
+                    <path d="M340 85 L390 85" stroke="#666" stroke-width="2" fill="none"/>
+                    <path d="M510 85 L560 85" stroke="#666" stroke-width="2" fill="none"/>
+                    <path d="M450 110 L450 150" stroke="#666" stroke-width="2" fill="none"/>
+                    <path d="M400 200 L400 240" stroke="#666" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+                    
+                    <!-- 底层文字 -->
+                    <text x="400" y="260" text-anchor="middle" fill="#333" font-size="14">部署应用</text>
+                    
+                    <defs>
+                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" fill="#666"/>
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+            <p class="tip">💡 架构说明：环境搭建遵循自底向上的依赖关系。每一层都为上层提供支持，最终通过TensorRT实现高性能推理。</p>
+        </div>
+
+        <div class="card">
+            <h2>第一步：CUDA与cuDNN安装</h2>
+            <h3>1.1 检查与准备</h3>
+            <ul>
+                <li><strong>确认GPU型号</strong>：确保您的NVIDIA GPU支持CUDA。可使用 <code>nvidia-smi</code> 命令查看。</li>
+                <li><strong>安装NVIDIA驱动</strong>：前往NVIDIA官网下载并安装最新版显卡驱动。</li>
+            </ul>
+            <pre class="command">nvidia-smi</pre>
+            <h3>1.2 安装CUDA Toolkit</h3>
+            <p>访问 <a href="https://developer.nvidia.com/cuda-toolkit-archive" style="color: var(--secondary);">NVIDIA CUDA Toolkit Archive</a>，选择与您的PyTorch版本兼容的CUDA版本（例如CUDA 11.8）。</p>
+            <div class="step">
+                <strong>Linux 示例 (runfile安装):</strong>
+                <pre class="command">
+wget https://developer.download.nvidia.com/compute/cuda/11.8.0/local_installers/cuda_11.8.0_520.61.05_linux.run
+sudo sh cuda_11.8.0_520.61.05_linux.run
+                </pre>
+                安装后，将CUDA路径加入环境变量：
+                <pre class="command">
+echo 'export PATH=/usr/local/cuda-11.8/bin:$PATH' >> ~/.bashrc
+echo 'export LD_LIBRARY_PATH=/usr/local/cuda-11.8/lib64:$LD_LIBRARY_PATH' >> ~/.bashrc
+source ~/.bashrc
+                </pre>
+            </div>
+            <h3>1.3 安装cuDNN</h3>
+            <p>cuDNN是深度神经网络加速库。在NVIDIA开发者网站下载与CUDA版本对应的cuDNN包，解压并复制文件到CUDA目录。</p>
+            <pre class="command">
+# 解压下载的cuDNN压缩包
+tar -xzvf cudnn-linux-x86_64-8.x.x.x_cuda11-archive.tar.xz
+# 复制文件
+sudo cp cudnn-*-archive/include/cudnn*.h /usr/local/cuda/include/
+sudo cp -P cudnn-*-archive/lib/libcudnn* /usr/local/cuda/lib64/
+sudo chmod a+r /usr/local/cuda/include/cudnn*.h /usr/local/cuda/lib64/libcudnn*
+            </pre>
+        </div>
+
+        <div class="card">
+            <h2>第二步：PyTorch GPU版本安装</h2>
+            <p>强烈建议使用conda或pip安装与CUDA版本匹配的PyTorch。访问 <a href="https://pytorch.org/get-started/locally/" style="color: var(--secondary);">PyTorch官网</a> 获取精确命令。</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>安装方式</th>
+                        <th>CUDA 11.8 安装命令</th>
+                        <th>说明</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Conda</strong></td>
+                        <td><code>conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia</code></td>
+                        <td>推荐，自动解决依赖</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Pip</strong></td>
+                        <td><code>pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118</code></td>
+                        <td>速度较快</td>
+                    </tr>
+                </tbody>
+            </table>
+            <h3>验证安装</h3>
+            <pre>
+import torch
+print(f"PyTorch版本: {torch.__version__}")
+print(f"CUDA是否可用: {torch.cuda.is_available()}")
+print(f"CUDA版本: {torch.version.cuda}")
+print(f"当前GPU设备: {torch.cuda.get_device_name(0)}")
+            </pre>
+        </div>
+
+        <div class="card">
+            <h2>第三步：ONNX与ONNX Runtime安装</h2>
+            <h3>3.1 ONNX (Open Neural Network Exchange)</h3>
+            <p>ONNX是一个开放的模型格式标准，用于在不同框架间转换模型。</p>
+            <pre class="command">pip install onnx onnxscript</pre>
+            <h3>3.2 ONNX Runtime (ORT)</h3>
+            <p>ONNX Runtime是一个高性能推理引擎，支持在多种硬件上运行ONNX模型。</p>
+            <pre class="command"># 安装GPU版本（根据CUDA版本选择）
+pip install onnxruntime-gpu==1.15.1
+# 或者安装CPU版本
+# pip install onnxruntime
+            </pre>
+            <h3>验证ONNX环境</h3>
+            <pre>
+import onnx
+import onnxruntime as ort
+print(f"ONNX版本: {onnx.__version__}")
+print(f"ONNX Runtime版本: {ort.__version__}")
+print(f"ORT可用Providers: {ort.get_available_providers()}")
+            </pre>
+        </div>
+
+        <div class="card">
+            <h2>第四步：TensorRT安装与验证</h2>
+            <h3>4.1 安装TensorRT</h3>
+            <p>从 <a href="https://developer.nvidia.com/tensorrt" style="color: var(--secondary);">NVIDIA TensorRT下载页</a> 获取对应CUDA版本的TensorRT。推荐使用Tar文件安装。</p>
+            <div class="step">
+                <strong>Linux Tar安装步骤：</strong>
+                <ol>
+                    <li>解压下载的TensorRT Tar包：<code>tar -xzvf TensorRT-8.x.x.x.Linux.x86_64-gnu.cuda-11.x.tar.gz</code></li>
+                    <li>将TensorRT库路径加入环境变量：</li>
+                </ol>
+                <pre class="command">
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/path/to/TensorRT-8.x.x.x/lib
+# 永久生效可加入 ~/.bashrc
+                </pre>
+                <li>安装Python wheel包：</li>
+                <pre class="command">
+cd /path/to/TensorRT-8.x.x.x/python
+pip install tensorrt-8.x.x.x-cp3x-none-linux_x86_64.whl
+                </pre>
+                <li>（可选）安装附加组件，如图形化工具polygraphy：<code>pip install polygraphy</code></li>
+            </div>
+            <h3>4.2 验证TensorRT</h3>
+            <pre>
+import tensorrt as trt
+print(f"TensorRT版本: {trt.__version__}")
+# 创建Logger和Builder，验证基础功能
+logger = trt.Logger(trt.Logger.WARNING)
+builder = trt.Builder(logger)
+if builder:
+    print("✅ TensorRT Builder创建成功，安装基本正常。")
+            </pre>
+            <h3>4.3 完整流程验证脚本</h3>
+            <pre>
+"""
+环境完整验证脚本
+"""
+import sys
+import torch
+import onnx
+import onnxruntime as ort
+import tensorrt as trt
+
+def check_env():
+    print("="*50)
+    print("深度学习部署环境验证报告")
+    print("="*50)
+
+    # 1. PyTorch
+    print("\n1. PyTorch检查:")
+    print(f"   版本: {torch.__version__}")
+    print(f"   CUDA可用: {torch.cuda.is_available()}")
+    if torch.cuda.is_available():
+        print(f"   GPU设备: {torch.cuda.get_device_name(0)}")
+        print(f"   CUDA版本: {torch.version.cuda}")
+
+    # 2. ONNX
+    print("\n2. ONNX检查:")
+    print(f"   ONNX版本: {onnx.__version__}")
+
+    # 3. ONNX Runtime
+    print("\n3. ONNX Runtime检查:")
+    print(f"   版本: {ort.__version__}")
+    providers = ort.get_available_providers()
+    print(f"   可用后端: {providers}")
+    if 'CUDAExecutionProvider' in providers:
+        print("   ✅ ONNX Runtime GPU支持已启用。")
+
+    # 4. TensorRT
+    print("\n4. TensorRT检查:")
+    print(f"   版本: {trt.__version__}")
+    logger = trt.Logger(trt.Logger.WARNING)
+    try:
+        builder = trt.Builder(logger)
+        if builder:
+            print("   ✅ TensorRT 引擎创建成功。")
+    except Exception as e:
+        print(f"   ❌ TensorRT 检查失败: {e}")
+
+    print("\n" + "="*50)
+    print("验证完成！")
+
+if __name__ == "__main__":
+    check_env()
+            </pre>
+        </div>
+
+        <div class="card">
+            <h2>常见问题与排错表</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>问题现象</th>
+                        <th>可能原因</th>
+                        <th>解决方案</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>torch.cuda.is_available()</code> 返回 False</td>
+                        <td>CUDA与驱动版本不匹配；PyTorch版本与CUDA版本不兼容</td>
+                        <td>检查<code>nvidia-smi</code>与<code>nvcc -V</code>版本；重新安装匹配的PyTorch版本</td>
+                    </tr>
+                    <tr>
+                        <td>导入onnxruntime时提示找不到DLL</td>
+                        <td>ONNX Runtime GPU版本依赖的CUDA库未在路径中</td>
+                        <td>确认CUDA的bin和lib64目录已加入系统PATH和LD_LIBRARY_PATH</td>
+                    </tr>
+                    <tr>
+                        <td>TensorRT导入失败</td>
+                        <td>TensorRT库路径未设置；Python wheel未安装</td>
+                        <td>正确设置LD_LIBRARY_PATH；安装对应Python版本的wheel文件</td>
+                    </tr>
+                    <tr>
+                        <td>模型转换到ONNX时出错</td>
+                        <td>PyTorch算子不支持；动态维度设置错误</td>
+                        <td>简化模型结构；检查<code>dynamic_axes</code>参数；使用最新版ONNX</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>总结与下一步</h2>
+            <p>至此，我们已经成功搭建了从底层CUDA驱动到上层TensorRT推理引擎的完整部署环境。这个环境是后续进行模型转换、优化和加速的基础。</p>
+            <p><strong>关键检查点：</strong></p>
+            <ul>
+                <li>✅ <code>nvidia-smi</code> 显示驱动和GPU状态正常。</li>
+                <li>✅ <code>torch.cuda.is_available()</code> 返回 True。</li>
+                <li>✅ ONNX Runtime 的 <code>get_available_providers()</code> 包含 <code>'CUDAExecutionProvider'</code>。</li>
+                <li>✅ 可以成功导入 <code>tensorrt</code> 并创建 Builder 对象。</li>
+            </ul>
+            <p>在下一讲中，我们将学习如何将训练好的PyTorch模型导出为ONNX格式，并利用ONNX Runtime进行初步的推理测试。</p>
+        </div>
+    </div>
+
+    <footer>
+        蓝海资料掘金营
+    </footer>
+</body>
+</html>

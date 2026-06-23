@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识蒸馏实战 - 模型量化与压缩技术实战</title>
+    <style>
+        :root {
+            --primary: #FFCC00; /* 明黄 */
+            --secondary: #33CC99; /* 青绿 */
+            --accent: #FF6666; /* 珊瑚红 */
+            --light: #F0F7FF; /* 淡蓝 */
+            --dark: #336699; /* 深蓝 */
+            --text: #333333;
+            --border: #99CCFF;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, var(--light) 0%, #E6F7FF 100%);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.92);
+            border: 8px double var(--border);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(51, 102, 153, 0.15);
+            overflow: hidden;
+            padding: 30px;
+        }
+        header {
+            text-align: center;
+            padding: 30px 20px;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            color: white;
+            border-radius: 15px 15px 0 0;
+            margin: -30px -30px 30px -30px;
+        }
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        h2 {
+            color: var(--dark);
+            border-left: 6px solid var(--accent);
+            padding-left: 15px;
+            margin: 30px 0 15px;
+            font-size: 1.8rem;
+        }
+        h3 {
+            color: var(--secondary);
+            margin: 20px 0 10px;
+            font-size: 1.4rem;
+        }
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        .card {
+            background: white;
+            border: 3px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            border: 3px solid var(--border);
+        }
+        th, td {
+            border: 2px solid var(--border);
+            padding: 12px 15px;
+            text-align: left;
+        }
+        th {
+            background-color: var(--primary);
+            color: var(--text);
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: rgba(240, 247, 255, 0.5);
+        }
+        ul, ol {
+            padding-left: 25px;
+            margin: 15px 0;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        pre {
+            background: #f8f9fa;
+            border-left: 5px solid var(--secondary);
+            padding: 18px;
+            overflow-x: auto;
+            margin: 20px 0;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            white-space: pre-wrap;
+            border: 1px dashed #ccc;
+        }
+        code {
+            background-color: rgba(255, 204, 0, 0.15);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+        .svg-container {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            border: 3px solid var(--border);
+        }
+        svg {
+            max-width: 100%;
+            height: auto;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 25px;
+            background: linear-gradient(to right, var(--dark), #5588bb);
+            color: white;
+            border-radius: 0 0 15px 15px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+            margin: 30px -30px -30px -30px;
+        }
+        .highlight {
+            background-color: rgba(51, 204, 153, 0.15);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .note {
+            background-color: #FFF9E6;
+            border-left: 5px solid var(--primary);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .columns {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 25px;
+            margin: 25px 0;
+        }
+        .col {
+            flex: 1;
+            min-width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>知识蒸馏实战</h1>
+            <p class="subtitle">使用PyTorch实现分类模型蒸馏、温度调节、学生网络设计与效果评估</p>
+            <p>《模型量化与压缩技术实战》第13课</p>
+        </header>
+
+        <section>
+            <h2>一、知识蒸馏核心概念</h2>
+            <div class="card">
+                <p><span class="highlight">知识蒸馏（Knowledge Distillation）</span>是一种模型压缩技术，旨在将大型、复杂的教师模型（Teacher Model）的知识迁移到小型、高效的学生模型（Student Model）中。其核心思想是让学生模型不仅学习真实标签（硬标签），还学习教师模型输出的概率分布（软标签），从而获得更好的泛化能力。</p>
+                <div class="svg-container">
+                    <svg viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="50" y="100" width="200" height="80" rx="10" fill="#FFCC00" stroke="#336699" stroke-width="3"/>
+                        <text x="150" y="145" text-anchor="middle" fill="#333" font-size="18" font-weight="bold">教师模型</text>
+                        <text x="150" y="170" text-anchor="middle" fill="#333" font-size="14">(复杂、高精度)</text>
+
+                        <rect x="550" y="100" width="200" height="80" rx="10" fill="#33CC99" stroke="#336699" stroke-width="3"/>
+                        <text x="650" y="145" text-anchor="middle" fill="#333" font-size="18" font-weight="bold">学生模型</text>
+                        <text x="650" y="170" text-anchor="middle" fill="#333" font-size="14">(轻量、高效)</text>
+
+                        <path d="M250 140 L550 140" stroke="#FF6666" stroke-width="4" stroke-dasharray="10,5" fill="none"/>
+                        <polygon points="550,140 540,135 540,145" fill="#FF6666"/>
+
+                        <text x="400" y="130" text-anchor="middle" fill="#FF6666" font-size="16" font-weight="bold">知识迁移</text>
+                        <text x="400" y="155" text-anchor="middle" fill="#333" font-size="14">软标签 + 硬标签</text>
+
+                        <ellipse cx="400" cy="230" rx="350" ry="40" fill="none" stroke="#99CCFF" stroke-width="2" stroke-dasharray="5,5"/>
+                        <text x="400" y="235" text-anchor="middle" fill="#336699" font-size="16">训练数据</text>
+                    </svg>
+                </div>
+                <div class="note">
+                    <strong>关键优势：</strong> 学生模型在保持较小规模的同时，能够逼近甚至超越教师模型的性能，实现模型效率与精度的平衡。
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>二、PyTorch实现分类模型蒸馏</h2>
+            <h3>2.1 整体流程</h3>
+            <ol>
+                <li><strong>准备阶段：</strong> 加载预训练教师模型、定义学生模型、准备数据集。</li>
+                <li><strong>蒸馏循环：</strong> 前向传播获取教师和学生的输出，计算蒸馏损失和分类损失，反向传播更新学生网络。</li>
+                <li><strong>评估阶段：</strong> 在测试集上评估学生模型的性能。</li>
+            </ol>
+
+            <h3>2.2 核心代码实现</h3>
+            <pre><code>import torch
+import torch.nn as nn
+import torch.optim as optim
+from torchvision import models, datasets, transforms
+
+# 1. 定义蒸馏损失函数 (KL散度 + 交叉熵)
+class DistillationLoss(nn.Module):
+    def __init__(self, temperature=4.0, alpha=0.7):
+        super().__init__()
+        self.temperature = temperature
+        self.alpha = alpha
+        self.kl_loss = nn.KLDivLoss(reduction='batchmean')
+        self.ce_loss = nn.CrossEntropyLoss()
+
+    def forward(self, student_logits, teacher_logits, labels):
+        # 软标签损失 (KL散度)
+        soft_loss = self.kl_loss(
+            nn.functional.log_softmax(student_logits / self.temperature, dim=1),
+            nn.functional.softmax(teacher_logits / self.temperature, dim=1)
+        ) * (self.temperature ** 2) * self.alpha
+
+        # 硬标签损失 (交叉熵)
+        hard_loss = self.ce_loss(student_logits, labels) * (1 - self.alpha)
+
+        return soft_loss + hard_loss
+
+# 2. 训练循环中的蒸馏步骤
+def train_epoch_distill(student, teacher, train_loader, criterion, optimizer, device, temperature):
+    student.train()
+    teacher.eval()
+    running_loss = 0.0
+
+    for inputs, labels in train_loader:
+        inputs, labels = inputs.to(device), labels.to(device)
+
+        with torch.no_grad():
+            teacher_logits = teacher(inputs)  # 教师前向传播
+
+        student_logits = student(inputs)      # 学生前向传播
+
+        # 计算蒸馏损失
+        loss = criterion(student_logits, teacher_logits, labels)
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        running_loss += loss.item() * inputs.size(0)
+
+    return running_loss / len(train_loader.dataset)</code></pre>
+        </section>
+
+        <section>
+            <h2>三、蒸馏温度调节</h2>
+            <div class="card">
+                <p><span class="highlight">温度参数（Temperature, T）</span>是知识蒸馏中的超参数，用于控制软标签的“软化”程度。</p>
+                <div class="columns">
+                    <div class="col">
+                        <h4>温度的影响：</h4>
+                        <ul>
+                            <li><strong>T = 1：</strong> 输出为标准Softmax，概率分布尖锐。</li>
+                            <li><strong>T > 1：</strong> 概率分布更平滑，蕴含更多类别间关系信息（暗知识）。</li>
+                            <li><strong>T 非常大：</strong> 分布接近均匀分布，信息量减少。</li>
+                        </ul>
+                    </div>
+                    <div class="col">
+                        <h4>调节策略：</h4>
+                        <ul>
+                            <li><strong>常用范围：</strong> 3.0 ~ 10.0。</li>
+                            <li><strong>初始尝试：</strong> 从 T=4.0 开始。</li>
+                            <li><strong>动态调整：</strong> 可随训练轮次衰减。</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="svg-container">
+                    <svg viewBox="0 0 800 250" xmlns="http://www.w3.org/2000/svg">
+                        <text x="400" y="30" text-anchor="middle" fill="#336699" font-size="18" font-weight="bold">温度(T)对输出概率分布的影响</text>
+                        <!-- T=1 -->
+                        <text x="100" y="60" text-anchor="middle" fill="#FF6666" font-size="14">T=1 (尖锐)</text>
+                        <line x1="50" y1="80" x2="150" y2="80" stroke="#333" stroke-width="2"/>
+                        <circle cx="70" cy="80" r="8" fill="#FFCC00"/>
+                        <circle cx="100" cy="80" r="20" fill="#FF6666"/>
+                        <circle cx="130" cy="80" r="5" fill="#33CC99"/>
+                        <!-- T=4 -->
+                        <text x="400" y="60" text-anchor="middle" fill="#336699" font-size="14">T=4 (适中)</text>
+                        <line x1="350" y1="80" x2="450" y2="80" stroke="#333" stroke-width="2"/>
+                        <circle cx="370" cy="80" r="12" fill="#FFCC00"/>
+                        <circle cx="400" cy="80" r="15" fill="#FF6666"/>
+                        <circle cx="430" cy="80" r="10" fill="#33CC99"/>
+                        <!-- T=10 -->
+                        <text x="700" y="60" text-anchor="middle" fill="#33CC99" font-size="14">T=10 (平滑)</text>
+                        <line x1="650" y1="80" x2="750" y2="80" stroke="#333" stroke-width="2"/>
+                        <circle cx="670" cy="80" r="13" fill="#FFCC00"/>
+                        <circle cx="700" cy="80" r="14" fill="#FF6666"/>
+                        <circle cx="730" cy="80" r="12" fill="#33CC99"/>
+                        <!-- 图例 -->
+                        <circle cx="200" cy="150" r="10" fill="#FFCC00"/>
+                        <text x="220" y="155" font-size="14">类别A</text>
+                        <circle cx="350" cy="150" r="10" fill="#FF6666"/>
+                        <text x="370" y="155" font-size="14">类别B (真值)</text>
+                        <circle cx="500" cy="150" r="10" fill="#33CC99"/>
+                        <text x="520" y="155" font-size="14">类别C</text>
+                        <text x="400" y="200" text-anchor="middle" fill="#666" font-size="14">温度升高，概率分布更平滑，学生能学到更多类别间关系</text>
+                    </svg>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>四、学生网络设计策略</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>设计维度</th>
+                        <th>策略选项</th>
+                        <th>说明与建议</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>网络结构</strong></td>
+                        <td>更浅、更窄的网络</td>
+                        <td>如减少卷积层数、通道数，使用MobileNet、ShuffleNet等轻量架构</td>
+                    </tr>
+                    <tr>
+                        <td><strong>与教师相似性</strong></td>
+                        <td>同构 vs 异构</td>
+                        <td>同构设计（如都是CNN）更易蒸馏；异构（如教师CNN，学生MLP）更具挑战</td>
+                    </tr>
+                    <tr>
+                        <td><strong>中间层监督</strong></td>
+                        <td>特征图匹配</td>
+                        <td>让学生中间层特征逼近教师对应层，引入额外损失（如MSE）</td>
+                    </tr>
+                    <tr>
+                        <td><strong>注意力转移</strong></td>
+                        <td>注意力图蒸馏</td>
+                        <td>迁移教师模型的注意力区域，提升学生特征提取能力</td>
+                    </tr>
+                    <tr>
+                        <td><strong>多教师蒸馏</strong></td>
+                        <td>集成多个教师</td>
+                        <td>融合多个教师模型的软标签，为学生提供更丰富的监督信号</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="note">
+                <strong>实战建议：</strong> 对于图像分类任务，可选用 <code>ResNet18</code> 作为教师，<code>MobileNetV2</code> 或自定义的小型CNN作为学生。优先保证学生网络有足够的容量学习教师知识，再考虑压缩极限。
+            </div>
+        </section>
+
+        <section>
+            <h2>五、蒸馏效果评估</h2>
+            <div class="columns">
+                <div class="col">
+                    <h3>5.1 评估指标</h3>
+                    <ul>
+                        <li><strong>Top-1 / Top-5 准确率：</strong> 在测试集上的分类精度。</li>
+                        <li><strong>模型大小（参数量）：</strong> 学生 vs 教师的参数对比。</li>
+                        <li><strong>推理速度（FPS）：</strong> 在目标硬件上的每秒处理帧数。</li>
+                        <li><strong>损失曲线：</strong> 训练过程中蒸馏损失与验证损失的变化。</li>
+                    </ul>
+                </div>
+                <div class="col">
+                    <h3>5.2 对比实验设计</h3>
+                    <ul>
+                        <li><strong>基准模型：</strong> 学生网络单独训练（无蒸馏）。</li>
+                        <li><strong>蒸馏模型：</strong> 使用教师知识蒸馏后的学生网络。</li>
+                        <li><strong>教师模型：</strong> 作为性能上限参考。</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="svg-container">
+                <svg viewBox="0 0 800 350" xmlns="http://www.w3.org/2000/svg">
+                    <text x="400" y="30" text-anchor="middle" fill="#336699" font-size="18" font-weight="bold">知识蒸馏效果评估对比图表示例</text>
+                    <!-- 坐标轴 -->
+                    <line x1="100" y1="250" x2="700" y2="250" stroke="#333" stroke-width="2"/>
+                    <line x1="100" y1="250" x2="100" y2="50" stroke="#333" stroke-width="2"/>
+                    <text x="400" y="290" text-anchor="middle" fill="#333" font-size="16">模型类型</text>
+                    <text x="50" y="150" text-anchor="middle" fill="#333" font-size="16" transform="rotate(-90,50,150)">准确率 (%)</text>
+                    <!-- 刻度 -->
+                    <line x1="95" y1="200" x2="100" y2="200" stroke="#333" stroke-width="1"/>
+                    <text x="85" y="205" text-anchor="end" fill="#333" font-size="12">80</text>
+                    <line x1="95" y1="150" x2="100" y2="150" stroke="#333" stroke-width="1"/>
+                    <text x="85" y="155" text-anchor="end" fill="#333" font-size="12">85</text>
+                    <line x1="95" y1="100" x2="100" y2="100" stroke="#333" stroke-width="1"/>
+                    <text x="85" y="105" text-anchor="end" fill="#333" font-size="12">90</text>
+                    <line x1="95" y1="50" x2="100" y2="50" stroke="#333" stroke-width="1"/>
+                    <text x="85" y="55" text-anchor="end" fill="#333" font-size="12">95</text>
+                    <!-- 柱状图 -->
+                    <!-- 教师 -->
+                    <rect x="180" y="100" width="80" height="150" fill="#FFCC00" stroke="#336699" stroke-width="2"/>
+                    <text x="220" y="95" text-anchor="middle" fill="#333" font-size="14">94.2%</text>
+                    <text x="220" y="270" text-anchor="middle" fill="#333" font-size="16" font-weight="bold">教师</text>
+                    <!-- 学生(蒸馏) -->
+                    <rect x="360" y="130" width="80" height="120" fill="#33CC99" stroke="#336699" stroke-width="2"/>
+                    <text x="400" y="125" text-anchor="middle" fill="#333" font-size="14">91.5%</text>
+                    <text x="400" y="270" text-anchor="middle" fill="#333" font-size="16" font-weight="bold">学生(蒸馏)</text>
+                    <!-- 学生(基线) -->
+                    <rect x="540" y="170" width="80" height="80" fill="#FF6666" stroke="#336699" stroke-width="2"/>
+                    <text x="580" y="165" text-anchor="middle" fill="#333" font-size="14">88.0%</text>
+                    <text x="580" y="270" text-anchor="middle" fill="#333" font-size="16" font-weight="bold">学生(基线)</text>
+                    <!-- 图例 -->
+                    <rect x="150" y="300" width="20" height="20" fill="#FFCC00" stroke="#333" stroke-width="1"/>
+                    <text x="180" y="315" font-size="14">教师模型 (参数量大，精度高)</text>
+                    <rect x="400" y="300" width="20" height="20" fill="#33CC99" stroke="#333" stroke-width="1"/>
+                    <text x="430" y="315" font-size="14">学生模型-蒸馏后 (参数量小，精度接近教师)</text>
+                    <rect x="150" y="330" width="20" height="20" fill="#FF6666" stroke="#333" stroke-width="1"/>
+                    <text x="180" y="345" font-size="14">学生模型-基线 (参数量小，精度较低)</text>
+                </svg>
+            </div>
+            <pre><code># 评估脚本示例
+def evaluate_model(model, test_loader, device):
+    model.eval()
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for inputs, labels in test_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            outputs = model(inputs)
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+    accuracy = 100 * correct / total
+    return accuracy
+
+# 计算参数量
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+print(f"教师参数量: {count_parameters(teacher_model):,}")
+print(f"学生参数量: {count_parameters(student_model):,}")
+print(f"教师准确率: {evaluate_model(teacher_model, test_loader, device):.2f}%")
+print(f"学生蒸馏准确率: {evaluate_model(student_model, test_loader, device):.2f}%")</code></pre>
+        </section>
+
+        <section>
+            <h2>六、总结与最佳实践</h2>
+            <div class="card">
+                <ul>
+                    <li><strong>温度选择：</strong> 从T=4开始实验，根据任务复杂度调整。过高的温度可能导致信息模糊。</li>
+                    <li><strong>损失权重α：</strong> 平衡软标签与硬标签的重要性，通常设置在0.5~0.9之间。</li>
+                    <li><strong>渐进式蒸馏：</strong> 可先使用高温度训练，后期逐渐降低温度，聚焦于困难样本。</li>
+                    <li><strong>中间层监督：</strong> 对于深层网络，引入中间特征匹配损失能显著提升效果。</li>
+                    <li><strong>数据增强：</strong> 蒸馏过程中使用与教师训练时相同或更强的数据增强。</li>
+                    <li><strong>验证集监控：</strong> 密切监控学生模型在验证集上的表现，防止过拟合教师噪声。</li>
+                </ul>
+                <p style="margin-top: 15px;">知识蒸馏是模型压缩与加速的强大工具，通过巧妙的知识迁移，能够在资源受限的环境中部署高性能模型。</p>
+            </div>
+        </section>
+
+        <footer class="footer">
+            公众号: 蓝海资料掘金营，微信 deep3321
+        </footer>
+    </div>
+</body>
+</html>

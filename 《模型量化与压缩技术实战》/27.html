@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模型压缩效果评估体系 - 《模型量化与压缩技术实战》</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #e0f7fa 0%, #fce4ec 50%, #f3e5f5 100%);
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            background-color: rgba(255, 255, 255, 0.92);
+            border-radius: 20px;
+            border: 8px double #42a5f5;
+            box-shadow: 0 15px 35px rgba(0, 100, 200, 0.15);
+            overflow: hidden;
+            padding: 30px;
+        }
+        .header {
+            text-align: center;
+            padding: 30px 20px;
+            background: linear-gradient(90deg, #80deea, #ce93d8);
+            margin: -30px -30px 30px -30px;
+            border-bottom: 4px solid #ff9800;
+        }
+        h1 {
+            color: #1565c0;
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        .subtitle {
+            color: #5e35b1;
+            font-size: 1.4rem;
+            font-weight: 300;
+        }
+        h2 {
+            color: #d81b60;
+            border-left: 6px solid #ffb74d;
+            padding-left: 15px;
+            margin: 40px 0 20px 0;
+            font-size: 1.8rem;
+        }
+        h3 {
+            color: #388e3c;
+            margin: 25px 0 15px 0;
+            font-size: 1.4rem;
+        }
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        .card {
+            background: #f9fbe7;
+            border: 2px solid #aed581;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            border: 3px solid #5c6bc0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        th, td {
+            border: 2px solid #90a4ae;
+            padding: 15px;
+            text-align: center;
+        }
+        th {
+            background-color: #bbdefb;
+            color: #0d47a1;
+            font-weight: bold;
+        }
+        td {
+            background-color: #e8f5e9;
+        }
+        ul, ol {
+            padding-left: 30px;
+            margin: 15px 0;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .svg-container {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+        }
+        svg {
+            border-radius: 10px;
+            border: 2px solid #ff8a65;
+            background-color: #fff;
+        }
+        .code-block {
+            background-color: #263238;
+            color: #e0f7fa;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            margin: 25px 0;
+            overflow-x: auto;
+            border-left: 6px solid #ff9800;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 25px;
+            background: linear-gradient(90deg, #4fc3f7, #ba68c8);
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 15px;
+            border-top: 5px dotted #ffeb3b;
+        }
+        .highlight {
+            background-color: #fff9c4;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .note {
+            background-color: #e3f2fd;
+            border-left: 5px solid #2196f3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 10px 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>模型压缩效果评估体系</h1>
+            <p class="subtitle">《模型量化与压缩技术实战》第27讲：压缩率、加速比、精度损失、硬件实测与综合评估</p>
+        </div>
+
+        <section>
+            <h2>一、引言：为何需要评估体系？</h2>
+            <p>模型压缩技术（如剪枝、量化、知识蒸馏等）旨在减少模型大小、提升推理速度、降低能耗。然而，压缩并非“免费的午餐”，往往伴随着精度损失。因此，建立一个科学、全面的评估体系至关重要，它帮助我们客观衡量压缩技术的综合效益，指导工程实践与方案选型。</p>
+            <div class="note">
+                <strong>核心目标：</strong>在模型大小、推理速度、计算资源与模型精度之间找到最佳平衡点。
+            </div>
+        </section>
+
+        <section>
+            <h2>二、核心评估指标详解</h2>
+
+            <div class="card">
+                <h3>1. 压缩率 (Compression Ratio)</h3>
+                <p>衡量模型存储空间或参数量的减少程度。</p>
+                <ul>
+                    <li><span class="highlight">参数压缩率</span>: CR<sub>param</sub> = (1 - 压缩后参数量 / 原始参数量) × 100%</li>
+                    <li><span class="highlight">模型大小压缩率</span>: CR<sub>size</sub> = (1 - 压缩后模型文件大小 / 原始模型文件大小) × 100%</li>
+                    <li><span class="highlight">计算量压缩率</span> (FLOPs): CR<sub>FLOPs</sub> = (1 - 压缩后FLOPs / 原始FLOPs) × 100%</li>
+                </ul>
+                <div class="svg-container">
+                    <svg width="600" height="180">
+                        <rect x="50" y="50" width="200" height="80" fill="#81d4fa" stroke="#0277bd" stroke-width="3"/>
+                        <text x="150" y="95" text-anchor="middle" fill="#01579b" font-weight="bold" font-size="16">原始模型</text>
+                        <text x="150" y="120" text-anchor="middle" fill="#01579b" font-size="14">参数量: 100M</text>
+                        <polygon points="280,90 330,70 330,110" fill="#ff9800"/>
+                        <text x="305" y="85" text-anchor="middle" fill="#e65100" font-size="14">压缩</text>
+                        <rect x="350" y="50" width="200" height="80" fill="#c8e6c9" stroke="#388e3c" stroke-width="3"/>
+                        <text x="450" y="95" text-anchor="middle" fill="#1b5e20" font-weight="bold" font-size="16">压缩后模型</text>
+                        <text x="450" y="120" text-anchor="middle" fill="#1b5e20" font-size="14">参数量: 25M</text>
+                        <text x="250" y="160" text-anchor="middle" fill="#d84315" font-size="16" font-weight="bold">压缩率 = 75%</text>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>2. 加速比 (Speedup Ratio)</h3>
+                <p>衡量模型推理速度的提升程度，是实际部署的关键指标。</p>
+                <ul>
+                    <li><span class="highlight">理论加速比</span>: 基于FLOPs或MACs的减少比例估算。</li>
+                    <li><span class="highlight">实测加速比</span>: SR = 原始模型推理时间 / 压缩后模型推理时间 (在同一硬件/环境下)。</li>
+                    <li>影响因素：硬件架构（CPU/GPU/NPU）、内存带宽、算子优化程度、批处理大小等。</li>
+                </ul>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>硬件平台</th>
+                            <th>原始模型时延 (ms)</th>
+                            <th>压缩模型时延 (ms)</th>
+                            <th>实测加速比</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>CPU (Intel i7)</td>
+                            <td>120</td>
+                            <td>45</td>
+                            <td><strong>2.67x</strong></td>
+                        </tr>
+                        <tr>
+                            <td>GPU (NVIDIA T4)</td>
+                            <td>15</td>
+                            <td>8</td>
+                            <td><strong>1.88x</strong></td>
+                        </tr>
+                        <tr>
+                            <td>边缘NPU (Huawei Ascend)</td>
+                            <td>50</td>
+                            <td>12</td>
+                            <td><strong>4.17x</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h3>3. 精度损失 (Accuracy Drop)</h3>
+                <p>评估压缩对模型性能（准确率、mAP等）的影响。</p>
+                <ul>
+                    <li><span class="highlight">绝对精度损失</span>: ΔAcc = 原始模型精度 - 压缩后模型精度</li>
+                    <li><span class="highlight">相对精度损失</span>: ΔAcc<sub>rel</sub> = ΔAcc / 原始模型精度 × 100%</li>
+                    <li>对于目标检测、分割等任务，需评估mAP、IoU等指标的变化。</li>
+                    <li><span class="highlight">精度恢复</span>: 通过微调(Fine-tuning)、蒸馏等技术弥补精度损失。</li>
+                </ul>
+                <div class="code-block">
+<pre>
+# 示例：计算精度损失
+original_accuracy = 0.945  # 原始模型Top-1准确率
+compressed_accuracy = 0.932 # 压缩后模型Top-1准确率
+
+absolute_drop = original_accuracy - compressed_accuracy
+relative_drop = (absolute_drop / original_accuracy) * 100
+
+print(f"绝对精度损失: {absolute_drop:.4f}")
+print(f"相对精度损失: {relative_drop:.2f}%")
+# 输出:
+# 绝对精度损失: 0.0130
+# 相对精度损失: 1.38%
+</pre>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>4. 硬件实测指标</h3>
+                <p>脱离具体硬件的评估是片面的，必须结合部署环境进行实测。</p>
+                <ul>
+                    <li><span class="highlight">时延 (Latency)</span>: 单次推理耗时，包括数据预处理、模型执行、后处理。</li>
+                    <li><span class="highlight">吞吐量 (Throughput)</span>: 单位时间（如每秒）处理的样本数。</li>
+                    <li><span class="highlight">功耗 (Power Consumption)</span>: 模型推理时的平均功耗（瓦特），对移动端和嵌入式设备至关重要。</li>
+                    <li><span class="highlight">内存占用 (Memory Footprint)</span>: 运行时占用的RAM/VRAM。</li>
+                </ul>
+                <div class="svg-container">
+                    <svg width="650" height="220">
+                        <rect x="100" y="30" width="120" height="50" rx="5" fill="#ffcc80" stroke="#ef6c00"/>
+                        <text x="160" y="60" text-anchor="middle" fill="#bf360c" font-size="14">时延测试</text>
+                        <rect x="100" y="100" width="120" height="50" rx="5" fill="#a5d6a7" stroke="#2e7d32"/>
+                        <text x="160" y="130" text-anchor="middle" fill="#1b5e20" font-size="14">吞吐量测试</text>
+                        <rect x="100" y="170" width="120" height="50" rx="5" fill="#b39ddb" stroke="#4527a0"/>
+                        <text x="160" y="200" text-anchor="middle" fill="#311b92" font-size="14">功耗测试</text>
+
+                        <rect x="350" y="30" width="120" height="50" rx="5" fill="#ef9a9a" stroke="#c62828"/>
+                        <text x="410" y="60" text-anchor="middle" fill="#b71c1c" font-size="14">内存分析</text>
+                        <rect x="350" y="100" width="120" height="50" rx="5" fill="#80deea" stroke="#006064"/>
+                        <text x="410" y="130" text-anchor="middle" fill="#004d40" font-size="14">温度监测</text>
+                        <rect x="350" y="170" width="120" height="50" rx="5" fill="#fff59d" stroke="#f9a825"/>
+                        <text x="410" y="200" text-anchor="middle" fill="#ff6f00" font-size="14">稳定性测试</text>
+
+                        <text x="230" y="110" text-anchor="middle" fill="#5d4037" font-size="16" font-weight="bold">硬件实测指标体系</text>
+                        <ellipse cx="230" cy="110" rx="180" ry="80" fill="none" stroke="#78909c" stroke-width="2" stroke-dasharray="5,5"/>
+                    </svg>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>三、综合评估方法论</h2>
+            <p>单一指标不足以决策，需要多维度综合评估。以下是常用的综合评估框架：</p>
+
+            <h3>1. 雷达图 (Spider Chart) 分析法</h3>
+            <p>将压缩率、加速比、精度保留率、内存节省、功耗比等指标归一化后绘制雷达图，直观比较不同压缩方案的优劣。</p>
+            <div class="svg-container">
+                <svg width="400" height="400" viewBox="0 0 400 400">
+                    <circle cx="200" cy="200" r="150" fill="none" stroke="#b0bec5" stroke-width="1"/>
+                    <circle cx="200" cy="200" r="120" fill="none" stroke="#b0bec5" stroke-width="1"/>
+                    <circle cx="200" cy="200" r="90" fill="none" stroke="#b0bec5" stroke-width="1"/>
+                    <circle cx="200" cy="200" r="60" fill="none" stroke="#b0bec5" stroke-width="1"/>
+                    <circle cx="200" cy="200" r="30" fill="none" stroke="#b0bec5" stroke-width="1"/>
+
+                    <line x1="200" y1="50" x2="200" y2="350" stroke="#78909c" stroke-width="1"/>
+                    <line x1="50" y1="200" x2="350" y2="200" stroke="#78909c" stroke-width="1"/>
+                    <line x1="125" y1="85" x2="275" y2="315" stroke="#78909c" stroke-width="1"/>
+                    <line x1="275" y1="85" x2="125" y2="315" stroke="#78909c" stroke-width="1"/>
+                    <line x1="85" y1="125" x2="315" y2="275" stroke="#78909c" stroke-width="1"/>
+                    <line x1="315" y1="125" x2="85" y2="275" stroke="#78909c" stroke-width="1"/>
+
+                    <text x="200" y="40" text-anchor="middle" fill="#1565c0" font-weight="bold">压缩率</text>
+                    <text x="350" y="210" text-anchor="start" fill="#c2185b" font-weight="bold">加速比</text>
+                    <text x="200" y="370" text-anchor="middle" fill="#388e3c" font-weight="bold">精度保留</text>
+                    <text x="40" y="210" text-anchor="start" fill="#f57c00" font-weight="bold">内存节省</text>
+                    <text x="290" y="90" text-anchor="start" fill="#7b1fa2" font-weight="bold">功耗比</text>
+                    <text x="110" y="90" text-anchor="end" fill="#00796b" font-weight="bold">部署难度</text>
+                    <text x="110" y="310" text-anchor="end" fill="#d32f2f" font-weight="bold">硬件兼容性</text>
+                    <text x="290" y="310" text-anchor="start" fill="#5d4037" font-weight="bold">工具链成熟度</text>
+
+                    <polygon points="200,110 250,140 230,230 170,230 150,140"
+                            fill="rgba(66, 165, 245, 0.6)" stroke="#1565c0" stroke-width="2"/>
+                    <polygon points="200,80 280,160 240,250 160,250 120,160"
+                            fill="rgba(236, 64, 122, 0.6)" stroke="#c2185b" stroke-width="2"/>
+                    <text x="100" y="280" fill="#1565c0" font-weight="bold">方案A</text>
+                    <text x="280" y="280" fill="#c2185b" font-weight="bold">方案B</text>
+                </svg>
+            </div>
+
+            <h3>2. 成本-效益评分卡</h3>
+            <p>为每个指标赋予权重，计算加权总分。</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>评估指标</th>
+                        <th>权重</th>
+                        <th>方案A (剪枝+量化)</th>
+                        <th>方案B (知识蒸馏)</th>
+                        <th>方案C (低秩分解)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>压缩率 (0-10分)</td>
+                        <td>0.25</td>
+                        <td>9</td>
+                        <td>6</td>
+                        <td>7</td>
+                    </tr>
+                    <tr>
+                        <td>加速比 (0-10分)</td>
+                        <td>0.30</td>
+                        <td>8</td>
+                        <td>7</td>
+                        <td>5</td>
+                    </tr>
+                    <tr>
+                        <td>精度保留 (0-10分)</td>
+                        <td>0.35</td>
+                        <td>7</td>
+                        <td>9</td>
+                        <td>8</td>
+                    </tr>
+                    <tr>
+                        <td>部署便利性 (0-10分)</td>
+                        <td>0.10</td>
+                        <td>6</td>
+                        <td>8</td>
+                        <td>5</td>
+                    </tr>
+                    <tr style="background-color: #c8e6c9; font-weight: bold;">
+                        <td><strong>加权总分</strong></td>
+                        <td><strong>1.00</strong></td>
+                        <td><strong>7.55</strong></td>
+                        <td><strong>7.85</strong></td>
+                        <td><strong>6.50</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>3. 评估流程建议</h3>
+            <ol>
+                <li><strong>确定评估基线</strong>: 在目标硬件上测试原始模型的各项指标。</li>
+                <li><strong>应用压缩技术</strong>: 实施一种或多种压缩策略（如量化到INT8）。</li>
+                <li><strong>收集量化数据</strong>: 系统性地测量压缩率、加速比、精度损失及硬件指标。</li>
+                <li><strong>进行综合对比</strong>: 使用雷达图或评分卡对比不同方案。</li>
+                <li><strong>决策与迭代</strong>: 根据业务需求（如时延优先还是精度优先）选择最佳方案，必要时进行微调或方案组合迭代。</li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>四、总结与最佳实践</h2>
+            <div class="card">
+                <p>一个健全的模型压缩评估体系必须包含<span class="highlight">压缩率、加速比、精度损失和硬件实测指标</span>四个核心维度，并通过<span class="highlight">综合评估方法论</span>进行权衡决策。</p>
+                <p><strong>最佳实践提示：</strong></p>
+                <ul>
+                    <li><strong>早评估，常评估</strong>: 在压缩流程的每个阶段都进行快速评估，避免后期才发现不可接受的问题。</li>
+                    <li><strong>以终为始</strong>: 根据最终部署的硬件环境和业务约束（如最大时延、最低精度）来反向设计评估标准。</li>
+                    <li><strong>工具化与自动化</strong>: 构建自动化评估脚本和流水线，确保评估结果的可复现性和一致性。</li>
+                    <li><strong>关注真实场景</strong>: 使用真实或接近真实的数据集和推理负载进行测试，而非仅用基准数据集。</li>
+                </ul>
+            </div>
+        </section>
+
+        <div class="footer">
+            公众号: 蓝海资料掘金营，微信 deep3321
+        </div>
+    </div>
+</body>
+</html>

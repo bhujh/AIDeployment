@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模型量化与压缩技术实战 - 后训练量化(PTQ)</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50; /* 青草绿 */
+            --secondary-color: #FF9800; /* 活力橙 */
+            --accent-color: #2196F3; /* 天空蓝 */
+            --light-bg: #F9FBE7; /* 浅鹅黄 */
+            --card-bg: #FFFFFF;
+            --text-dark: #333333;
+            --text-light: #666666;
+            --border-color: #C8E6C9;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background-color: var(--light-bg);
+            color: var(--text-dark);
+            line-height: 1.6;
+            padding: 20px;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(76, 175, 80, 0.05) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(255, 152, 0, 0.05) 0%, transparent 20%);
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            border: 8px double var(--border-color);
+            overflow: hidden;
+            position: relative;
+        }
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 8px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color), var(--accent-color));
+            z-index: 10;
+        }
+        header {
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+            border-bottom: 4px solid var(--secondary-color);
+        }
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .subtitle {
+            font-size: 1.3rem;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        main {
+            padding: 40px 30px;
+        }
+        section {
+            margin-bottom: 50px;
+            padding: 25px;
+            border-radius: 15px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-left: 6px solid var(--primary-color);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease;
+        }
+        section:hover {
+            transform: translateY(-5px);
+        }
+        h2 {
+            color: var(--primary-color);
+            border-bottom: 3px dashed var(--border-color);
+            padding-bottom: 12px;
+            margin-bottom: 25px;
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+        }
+        h2::before {
+            content: '📘';
+            margin-right: 12px;
+            font-size: 1.5rem;
+        }
+        h3 {
+            color: var(--secondary-color);
+            margin: 20px 0 15px;
+            font-size: 1.4rem;
+        }
+        p {
+            margin-bottom: 18px;
+            color: var(--text-light);
+        }
+        ul, ol {
+            padding-left: 25px;
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 10px;
+            padding-left: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        }
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 18px 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+        td {
+            padding: 16px 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        tr:nth-child(even) {
+            background-color: rgba(200, 230, 201, 0.3);
+        }
+        tr:hover {
+            background-color: rgba(76, 175, 80, 0.1);
+        }
+        .code-block {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 25px 0;
+            overflow-x: auto;
+            border-left: 5px solid var(--secondary-color);
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+        .svg-container {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+        }
+        svg {
+            max-width: 100%;
+            height: auto;
+        }
+        .highlight {
+            background-color: rgba(255, 152, 0, 0.15);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            color: var(--secondary-color);
+        }
+        .tip-box {
+            background-color: rgba(33, 150, 243, 0.1);
+            border-left: 5px solid var(--accent-color);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 25px 0;
+        }
+        .tip-box strong {
+            color: var(--accent-color);
+        }
+        footer {
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(135deg, #f5f5f5, #e8f5e9);
+            color: var(--text-light);
+            border-top: 4px double var(--border-color);
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+        .step-number {
+            display: inline-block;
+            background-color: var(--secondary-color);
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 32px;
+            margin-right: 12px;
+            font-weight: bold;
+        }
+        .architecture-svg {
+            background-color: white;
+            padding: 20px;
+            border-radius: 15px;
+            border: 2px solid var(--border-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>后训练量化实战 (PTQ)</h1>
+            <p class="subtitle">PTQ流程详解、校准集选择与使用、TensorRT/PyTorch PTQ API实战、精度评估与调优</p>
+            <p style="margin-top:15px; font-size:1.1rem;">《模型量化与压缩技术实战》课程 · 第五章</p>
+        </header>
+
+        <main>
+            <section id="intro">
+                <h2>后训练量化 (Post-Training Quantization) 概述</h2>
+                <p><span class="highlight">后训练量化 (PTQ)</span> 是一种在模型训练完成后，无需重新训练或微调，直接将预训练模型从浮点数转换为低精度整数表示的模型压缩技术。其核心目标是 <strong>减少模型存储空间、降低内存带宽需求、加速推理计算</strong>，同时尽可能保持模型精度。</p>
+                <p>PTQ 因其 <strong>简单、快速、无需训练数据标签</strong> 等优点，成为工业界部署深度学习模型的首选量化方案之一。</p>
+                
+                <div class="svg-container">
+                    <svg class="architecture-svg" width="800" height="220" viewBox="0 0 800 220">
+                        <rect x="10" y="80" width="180" height="60" rx="10" fill="#4CAF50" stroke="#2E7D32" stroke-width="2"/>
+                        <text x="100" y="115" text-anchor="middle" fill="white" font-weight="bold" font-size="16">FP32 预训练模型</text>
+                        <path d="M200 110 L250 110" stroke="#FF9800" stroke-width="3" marker-end="url(#arrow)"/>
+                        <text x="225" y="100" text-anchor="middle" fill="#FF9800" font-size="14">PTQ 转换</text>
+                        
+                        <rect x="260" y="80" width="180" height="60" rx="10" fill="#2196F3" stroke="#1565C0" stroke-width="2"/>
+                        <text x="350" y="115" text-anchor="middle" fill="white" font-weight="bold" font-size="16">校准集分析</text>
+                        <path d="M440 110 L490 110" stroke="#FF9800" stroke-width="3" marker-end="url(#arrow)"/>
+                        <text x="465" y="100" text-anchor="middle" fill="#FF9800" font-size="14">量化参数计算</text>
+                        
+                        <rect x="500" y="80" width="180" height="60" rx="10" fill="#9C27B0" stroke="#6A1B9A" stroke-width="2"/>
+                        <text x="590" y="115" text-anchor="middle" fill="white" font-weight="bold" font-size="16">INT8 量化模型</text>
+                        
+                        <text x="100" y="170" text-anchor="middle" fill="#333" font-size="14">输入: 全精度权重/激活</text>
+                        <text x="350" y="170" text-anchor="middle" fill="#333" font-size="14">关键步骤: 确定Scale/ZP</text>
+                        <text x="590" y="170" text-anchor="middle" fill="#333" font-size="14">输出: 低精度高效模型</text>
+                        
+                        <defs>
+                            <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                                <path d="M0,0 L0,6 L9,3 z" fill="#FF9800"/>
+                            </marker>
+                        </defs>
+                    </svg>
+                </div>
+            </section>
+
+            <section id="ptq-process">
+                <h2>PTQ 核心流程详解</h2>
+                <p>一个完整的 PTQ 流程包含以下几个关键步骤：</p>
+                <ol>
+                    <li><span class="step-number">1</span><strong>模型准备</strong>：加载预训练的 FP32 模型，并将其转换为可量化的图表示（如 ONNX）。</li>
+                    <li><span class="step-number">2</span><strong>校准集选择与准备</strong>：准备一小部分无标签的代表性数据，用于分析激活值的分布。</li>
+                    <li><span class="step-number">3</span><strong>校准 (Calibration)</strong>：在校准数据上运行模型，收集各层激活值的统计信息（如最大值、最小值、直方图）。</li>
+                    <li><span class="step-number">4</span><strong>量化参数计算</strong>：根据收集的统计信息，为每一层计算量化参数：<strong>缩放因子 (Scale)</strong> 和 <strong>零点 (Zero Point)</strong>。</li>
+                    <li><span class="step-number">5</span><strong>模型转换</strong>：将 FP32 权重和激活值，使用计算出的量化参数，转换为 INT8 表示。</li>
+                    <li><span class="step-number">6</span><strong>精度验证与调优</strong>：在测试集上评估量化后模型的精度，若损失过大，需调整校准方法或量化策略。</li>
+                </ol>
+                
+                <div class="tip-box">
+                    <strong>💡 核心公式：</strong> 线性量化公式：<code>Q = round(R / S) + Z</code>，其中 <code>R</code> 为实数值，<code>Q</code> 为量化整数值，<code>S</code> 为缩放因子，<code>Z</code> 为零点。
+                </div>
+            </section>
+
+            <section id="calibration-dataset">
+                <h2>校准集选择与使用指南</h2>
+                <p>校准集的选择直接影响量化后模型的精度。其核心原则是：<span class="highlight">校准数据应能代表模型在实际推理中遇到的真实数据分布</span>。</p>
+                
+                <h3>校准集选择原则</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>原则</th>
+                            <th>说明</th>
+                            <th>建议</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>代表性</strong></td>
+                            <td>数据分布应与测试集/真实场景一致</td>
+                            <td>从训练集或真实数据中随机抽取</td>
+                        </tr>
+                        <tr>
+                            <td><strong>数据量</strong></td>
+                            <td>足够覆盖各层激活值的动态范围</td>
+                            <td>通常 100-1000 个样本即可，无需标签</td>
+                        </tr>
+                        <tr>
+                            <td><strong>多样性</strong></td>
+                            <td>包含各类场景、光照、角度等变化</td>
+                            <td>避免单一场景，确保分布全面</td>
+                        </tr>
+                        <tr>
+                            <td><strong>预处理一致性</strong></td>
+                            <td>与模型推理时的预处理完全相同</td>
+                            <td>归一化、裁剪、尺寸等参数需一致</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <h3>常见校准方法</h3>
+                <ul>
+                    <li><strong>最大最小值法 (MinMax)</strong>：直接使用激活值的最大最小值确定范围。简单，但对异常值敏感。</li>
+                    <li><strong>熵最小化法 (Entropy)</strong>：寻找使量化后信息损失最小的阈值。TensorRT 常用，精度较高。</li>
+                    <li><strong>百分位数法 (Percentile)</strong>：例如使用 99.9% 分位数作为最大值，可排除极端异常值。</li>
+                    <li><strong>均方误差最小化法 (MSE)</strong>：寻找使量化前后张量均方误差最小的缩放因子。</li>
+                </ul>
+            </section>
+
+            <section id="tensorrt-ptq">
+                <h2>TensorRT PTQ API 实战</h2>
+                <p>TensorRT 提供了强大的 PTQ 工具，主要通过 <strong>IInt8Calibrator</strong> 接口和 <strong>trt.BuilderFlag.INT8</strong> 标志实现。</p>
+                
+                <h3>关键步骤代码示例</h3>
+                <div class="code-block">
+<pre><code>import tensorrt as trt
+import numpy as np
+
+# 1. 定义校准器类
+class MyCalibrator(trt.IInt8EntropyCalibrator2):
+    def __init__(self, calibration_data):
+        super().__init__()
+        self.data = calibration_data  # 校准数据迭代器
+        self.buffer = None
+        self.count = 0
+        
+    def get_batch_size(self):
+        return 1  # 校准批次大小
+        
+    def get_batch(self, names):
+        try:
+            batch = next(self.data)
+            self.buffer = batch.ravel().astype(np.float32)
+            self.count += 1
+            return [int(self.buffer.data.ctypes.data)]
+        except StopIteration:
+            return None
+            
+    def read_calibration_cache(self):
+        # 可读取缓存，加速后续校准
+        return None
+        
+    def write_calibration_cache(self, cache):
+        # 保存校准缓存
+        with open("calibration.cache", "wb") as f:
+            f.write(cache)
+
+# 2. 构建 INT8 引擎
+logger = trt.Logger(trt.Logger.WARNING)
+builder = trt.Builder(logger)
+network = builder.create_network(1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH))
+parser = trt.OnnxParser(network, logger)
+
+# 解析 ONNX 模型
+with open("model.onnx", "rb") as f:
+    parser.parse(f.read())
+
+# 配置 INT8 校准
+config = builder.create_builder_config()
+config.set_flag(trt.BuilderFlag.INT8)
+config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, 1 << 30)  # 1GB
+
+calibrator = MyCalibrator(calibration_data_generator())
+config.int8_calibrator = calibrator
+
+# 3. 构建并序列化引擎
+engine = builder.build_engine(network, config)
+with open("model_int8.engine", "wb") as f:
+    f.write(engine.serialize())</code></pre>
+                </div>
+            </section>
+
+            <section id="pytorch-ptq">
+                <h2>PyTorch PTQ API 实战</h2>
+                <p>PyTorch 从 1.8 版本开始提供 <strong>torch.quantization</strong> 模块，支持灵活的 PTQ 操作。</p>
+                
+                <h3>静态量化完整示例</h3>
+                <div class="code-block">
+<pre><code>import torch
+import torch.nn as nn
+import torch.quantization
+from torch.quantization import quantize_dynamic, prepare, convert
+
+# 1. 定义并加载预训练模型
+model_fp32 = torchvision.models.resnet18(pretrained=True)
+model_fp32.eval()
+
+# 2. 准备校准数据（示例）
+calibration_data = [torch.randn(1, 3, 224, 224) for _ in range(100)]
+
+# 3. 模型融合（可选，提升性能）
+model_fp32_fused = torch.quantization.fuse_modules(model_fp32, 
+    [['conv1', 'bn1', 'relu']] + 
+    [[f'layer{i}.{j}.conv1', f'layer{i}.{j}.bn1', f'layer{i}.{j}.relu'] 
+     for i in range(1,5) for j in [0,1]]
+)
+
+# 4. 指定量化配置
+model_fp32_fused.qconfig = torch.quantization.get_default_qconfig('fbgemm')  # x86 CPU
+# model_fp32_fused.qconfig = torch.quantization.get_default_qconfig('qnnpack')  # ARM CPU
+
+# 5. 准备模型（插入观察器）
+model_prepared = prepare(model_fp32_fused)
+
+# 6. 校准（运行校准数据）
+with torch.no_grad():
+    for data in calibration_data:
+        model_prepared(data)
+
+# 7. 转换为量化模型
+model_int8 = convert(model_prepared)
+
+# 8. 保存与加载量化模型
+torch.save(model_int8.state_dict(), 'resnet18_int8.pth')
+
+# 9. 动态量化示例（适用于LSTM、Linear等）
+model_lstm = nn.LSTM(10, 20, 2)
+model_lstm_quantized = quantize_dynamic(model_lstm, {nn.LSTM, nn.Linear}, dtype=torch.qint8)</code></pre>
+                </div>
+            </section>
+
+            <section id="evaluation-tuning">
+                <h2>精度评估与调优策略</h2>
+                <p>量化后模型精度下降是常见问题，需系统评估并采取调优措施。</p>
+                
+                <h3>评估指标与方法</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>评估维度</th>
+                            <th>具体指标</th>
+                            <th>工具/方法</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>任务精度</strong></td>
+                            <td>Top-1/Top-5 Accuracy, mAP, F1-Score</td>
+                            <td>在完整测试集上评估，对比 FP32 基线</td>
+                        </tr>
+                        <tr>
+                            <td><strong>逐层误差分析</strong></td>
+                            <td>MSE, Cosine Similarity, KL Divergence</td>
+                            <td>比较量化前后各层输出张量</td>
+                        </tr>
+                        <tr>
+                            <td><strong>硬件性能</strong></td>
+                            <td>推理延迟 (Latency), 吞吐量 (Throughput)</td>
+                            <td>TensorRT Profiler, PyTorch Profiler</td>
+                        </tr>
+                        <tr>
+                            <td><strong>模型大小</strong></td>
+                            <td>磁盘占用 (MB), 内存占用 (MB)</td>
+                            <td>直接对比模型文件大小</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <h3>精度调优策略</h3>
+                <ul>
+                    <li><strong>校准方法调优</strong>：尝试不同的校准算法（Entropy, MinMax, Percentile）。</li>
+                    <li><strong>校准集增强</strong>：增加校准集数量或多样性，确保分布代表性。</li>
+                    <li><strong>分层量化策略</strong>：对敏感层（如第一层、最后一层）保持 FP16 或更高精度。</li>
+                    <li><strong>量化感知训练 (QAT)</strong>：当 PTQ 精度损失过大时（如 &gt;3%），考虑使用 QAT 进行微调。</li>
+                    <li><strong>模型结构优化</strong>：移除对量化不友好的操作（如大数值范围的激活函数）。</li>
+                </ul>
+                
+                <div class="tip-box">
+                    <strong>📊 精度损失容忍度参考：</strong> 通常，分类任务 Top-1 精度下降 &lt;1% 为优秀，&lt;2% 为可接受；检测/分割任务 mAP 下降 &lt;2% 为优秀，&lt;3% 为可接受。具体需根据业务需求确定。
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>公众号: 蓝海资料掘金营，微信 deep3321</p>
+            <p style="margin-top:10px; font-size:0.9rem; opacity:0.8;">《模型量化与压缩技术实战》课程 · 专注AI工程化部署与性能优化</p>
+        </footer>
+    </div>
+</body>
+</html>

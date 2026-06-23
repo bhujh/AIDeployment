@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyTorch模型部署实战：安全与可靠性</title>
+    <style>
+        :root {
+            --primary: #4CAF50; /* 青草绿 */
+            --secondary: #FF9800; /* 活力橙 */
+            --accent: #2196F3; /* 天空蓝 */
+            --light: #FFF9C4; /* 淡鹅黄 */
+            --background: #F5F5F5; /* 浅灰白 */
+            --text: #333333;
+            --card-bg: #FFFFFF;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background-color: var(--background);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            border-radius: 20px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 15px;
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        main {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+        }
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border-top: 8px solid var(--primary);
+            transition: transform 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .card h2 {
+            color: var(--primary);
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px dashed var(--light);
+        }
+        .card h3 {
+            color: var(--secondary);
+            margin: 20px 0 10px;
+        }
+        ul, ol {
+            padding-left: 25px;
+            margin: 15px 0;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.05);
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background-color: var(--accent);
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        pre {
+            background-color: #f8f8f8;
+            border-left: 5px solid var(--secondary);
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+        code {
+            background-color: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #d63384;
+        }
+        .svg-container {
+            text-align: center;
+            margin: 25px 0;
+            padding: 20px;
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.03);
+        }
+        .architecture {
+            width: 100%;
+            height: 300px;
+        }
+        footer {
+            text-align: center;
+            padding: 30px;
+            margin-top: 40px;
+            background: linear-gradient(135deg, var(--accent), var(--primary));
+            color: white;
+            border-radius: 20px;
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            font-weight: bold;
+        }
+        .highlight {
+            background-color: var(--light);
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .note {
+            background-color: #E3F2FD;
+            border-left: 5px solid var(--accent);
+            padding: 15px;
+            border-radius: 0 10px 10px 0;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>PyTorch模型部署实战：安全与可靠性</h1>
+        <p class="subtitle">第29讲：模型加密、输入验证、异常处理、故障恢复</p>
+    </header>
+
+    <main>
+        <section class="card">
+            <h2>🔒 模型加密</h2>
+            <p>保护模型知识产权，防止模型被非法窃取或篡改。</p>
+            <h3>常用加密技术</h3>
+            <ul>
+                <li><span class="highlight">对称加密</span>：使用相同密钥加密和解密，如AES。</li>
+                <li><span class="highlight">非对称加密</span>：使用公钥加密、私钥解密，如RSA。</li>
+                <li><span class="highlight">模型混淆</span>：通过重命名节点、插入虚拟节点增加逆向难度。</li>
+                <li><span class="highlight">硬件绑定</span>：将模型与特定硬件（如GPU、安全芯片）绑定。</li>
+            </ul>
+            <h3>ONNX模型加密示例</h3>
+<pre><code>import onnx
+from cryptography.fernet import Fernet
+
+# 加载模型
+model = onnx.load("model.onnx")
+
+# 生成密钥
+key = Fernet.generate_key()
+cipher = Fernet(key)
+
+# 序列化并加密模型二进制数据
+model_bytes = model.SerializeToString()
+encrypted_bytes = cipher.encrypt(model_bytes)
+
+# 保存加密模型
+with open("model_encrypted.onnx", "wb") as f:
+    f.write(encrypted_bytes)
+
+# 使用时解密
+decrypted_bytes = cipher.decrypt(encrypted_bytes)
+loaded_model = onnx.load_from_string(decrypted_bytes)</code></pre>
+        </section>
+
+        <section class="card">
+            <h2>🛡️ 输入验证</h2>
+            <p>确保输入数据符合预期，防止恶意输入导致模型异常或安全漏洞。</p>
+            <h3>验证维度</h3>
+            <table>
+                <thead>
+                    <tr><th>维度</th><th>检查内容</th><th>示例</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>形状</td><td>张量维度与大小</td><td>input.shape == (1, 3, 224, 224)</td></tr>
+                    <tr><td>数据类型</td><td>张量元素类型</td><td>input.dtype == torch.float32</td></tr>
+                    <tr><td>数值范围</td><td>值是否在合理区间</td><td>0 ≤ input ≤ 1 或 -1 ≤ input ≤ 1</td></tr>
+                    <tr><td>异常值</td><td>NaN、Infinity</td><td>torch.isfinite(input).all()</td></tr>
+                </tbody>
+            </table>
+            <h3>验证代码示例</h3>
+<pre><code>def validate_input(input_tensor):
+    """验证输入张量"""
+    # 检查形状
+    expected_shape = (1, 3, 224, 224)
+    if input_tensor.shape != expected_shape:
+        raise ValueError(f"输入形状应为{expected_shape}, 实际为{input_tensor.shape}")
+    
+    # 检查数据类型
+    if input_tensor.dtype != torch.float32:
+        raise TypeError(f"输入数据类型应为torch.float32, 实际为{input_tensor.dtype}")
+    
+    # 检查数值范围（假设输入是归一化后的图像）
+    if input_tensor.min() < 0 or input_tensor.max() > 1:
+        raise ValueError("输入值应在[0, 1]范围内")
+    
+    # 检查异常值
+    if not torch.isfinite(input_tensor).all():
+        raise ValueError("输入包含NaN或Infinity值")
+    
+    return True</code></pre>
+        </section>
+
+        <section class="card">
+            <h2>🚨 异常处理</h2>
+            <p>优雅地处理运行时错误，提供有意义的错误信息，保证系统稳定性。</p>
+            <h3>常见异常类型</h3>
+            <ol>
+                <li><strong>模型加载异常</strong>：文件损坏、版本不匹配、加密错误。</li>
+                <li><strong>推理异常</strong>：GPU内存不足、输入格式错误、计算错误。</li>
+                <li><strong>环境异常</strong>：依赖库缺失、硬件不支持、权限不足。</li>
+                <li><strong>业务异常</strong>：超时、并发冲突、资源耗尽。</li>
+            </ol>
+            <h3>异常处理策略</h3>
+            <div class="svg-container">
+                <svg class="architecture" viewBox="0 0 800 300">
+                    <rect x="50" y="50" width="200" height="60" rx="10" fill="#4CAF50" opacity="0.8"/>
+                    <text x="150" y="85" text-anchor="middle" fill="white" font-weight="bold">请求进入</text>
+                    <rect x="300" y="50" width="200" height="60" rx="10" fill="#2196F3" opacity="0.8"/>
+                    <text x="400" y="85" text-anchor="middle" fill="white" font-weight="bold">输入验证</text>
+                    <rect x="550" y="50" width="200" height="60" rx="10" fill="#FF9800" opacity="0.8"/>
+                    <text x="650" y="85" text-anchor="middle" fill="white" font-weight="bold">模型推理</text>
+                    
+                    <rect x="100" y="150" width="600" height="80" rx="10" fill="#F44336" opacity="0.7"/>
+                    <text x="400" y="190" text-anchor="middle" fill="white" font-weight="bold">异常捕获与处理</text>
+                    
+                    <rect x="300" y="250" width="200" height="60" rx="10" fill="#9C27B0" opacity="0.8"/>
+                    <text x="400" y="285" text-anchor="middle" fill="white" font-weight="bold">响应返回</text>
+                    
+                    <path d="M150 110 L150 140 M150 140 L400 140 M400 140 L400 110" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+                    <path d="M450 110 L450 140 M450 140 L600 140 M600 140 L600 110" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+                    <path d="M400 230 L400 250" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+                    
+                    <defs>
+                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" fill="#333"/>
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+<pre><code>class ModelInferenceEngine:
+    def __init__(self, model_path):
+        try:
+            self.model = self.load_model(model_path)
+            self.logger = setup_logger()
+        except FileNotFoundError as e:
+            self.logger.error(f"模型文件不存在: {e}")
+            raise
+        except RuntimeError as e:
+            self.logger.error(f"模型加载失败: {e}")
+            raise
+    
+    def infer(self, input_data):
+        try:
+            # 输入验证
+            validate_input(input_data)
+            
+            # 推理
+            with torch.no_grad():
+                output = self.model(input_data)
+                
+            # 输出验证
+            validate_output(output)
+            
+            return output
+            
+        except ValueError as e:
+            self.logger.warning(f"输入验证失败: {e}")
+            return {"error": "invalid_input", "message": str(e)}
+        except RuntimeError as e:
+            self.logger.error(f"推理运行时错误: {e}")
+            return {"error": "inference_failed", "message": "模型推理失败"}
+        except Exception as e:
+            self.logger.critical(f"未知错误: {e}")
+            return {"error": "internal_error", "message": "系统内部错误"}</code></pre>
+        </section>
+
+        <section class="card">
+            <h2>🔄 故障恢复</h2>
+            <p>确保系统在发生故障后能够自动或手动恢复，保证服务可用性。</p>
+            <h3>恢复策略</h3>
+            <table>
+                <thead>
+                    <tr><th>策略</th><th>描述</th><th>适用场景</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>重试机制</td><td>临时故障后自动重试</td><td>网络抖动、临时资源不足</td></tr>
+                    <tr><td>降级服务</td><td>返回简化结果或缓存数据</td><td>模型加载失败、GPU内存不足</td></tr>
+                    <tr><td>备份切换</td><td>切换到备用模型或服务器</td><td>主模型损坏、服务器宕机</td></tr>
+                    <tr><td>状态检查点</td><td>定期保存状态，故障后恢复</td><td>长时间推理任务</td></tr>
+                </tbody>
+            </table>
+            <h3>故障恢复架构</h3>
+            <div class="svg-container">
+                <svg viewBox="0 0 800 250">
+                    <rect x="100" y="30" width="200" height="50" rx="10" fill="#4CAF50" opacity="0.7"/>
+                    <text x="200" y="60" text-anchor="middle" fill="white" font-weight="bold">健康检查</text>
+                    
+                    <rect x="350" y="30" width="200" height="50" rx="10" fill="#2196F3" opacity="0.7"/>
+                    <text x="450" y="60" text-anchor="middle" fill="white" font-weight="bold">故障检测</text>
+                    
+                    <rect x="100" y="120" width="200" height="50" rx="10" fill="#FF9800" opacity="0.7"/>
+                    <text x="200" y="150" text-anchor="middle" fill="white" font-weight="bold">恢复策略选择</text>
+                    
+                    <rect x="350" y="120" width="200" height="50" rx="10" fill="#9C27B0" opacity="0.7"/>
+                    <text x="450" y="150" text-anchor="middle" fill="white" font-weight="bold">执行恢复</text>
+                    
+                    <rect x="600" y="120" width="150" height="50" rx="10" fill="#E91E63" opacity="0.7"/>
+                    <text x="675" y="150" text-anchor="middle" fill="white" font-weight="bold">状态恢复</text>
+                    
+                    <path d="M200 80 L200 110 M200 110 L450 110 M450 110 L450 80" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrow2)"/>
+                    <path d="M450 80 L450 110 M450 110 L200 110 M200 110 L200 170" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrow2)" stroke-dasharray="5,5"/>
+                    <path d="M200 170 L200 200 M200 200 L450 200 M450 200 L450 170" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrow2)"/>
+                    <path d="M450 170 L450 200 M450 200 L600 200 M600 200 L600 170" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrow2)"/>
+                    <path d="M600 170 L600 200 M600 200 L675 200 M675 200 L675 170" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrow2)"/>
+                    
+                    <defs>
+                        <marker id="arrow2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" fill="#333"/>
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+            <div class="note">
+                <strong>最佳实践：</strong> 实现监控告警系统，当模型服务异常时自动通知运维人员。定期进行故障恢复演练，确保恢复流程有效。
+            </div>
+<pre><code>class FaultRecoveryManager:
+    def __init__(self):
+        self.backup_models = {}
+        self.retry_count = 0
+        self.max_retries = 3
+        
+    def recover_from_failure(self, error_type, context):
+        """根据错误类型执行恢复策略"""
+        recovery_strategies = {
+            "model_load_failed": self.switch_to_backup,
+            "inference_timeout": self.retry_with_timeout,
+            "gpu_out_of_memory": self.fallback_to_cpu,
+            "corrupted_input": self.use_default_response
+        }
+        
+        strategy = recovery_strategies.get(error_type, self.default_recovery)
+        return strategy(context)
+    
+    def switch_to_backup(self, context):
+        """切换到备份模型"""
+        model_name = context.get("model_name")
+        if model_name in self.backup_models:
+            self.logger.info(f"切换到备份模型: {model_name}")
+            return self.backup_models[model_name]
+        else:
+            raise Exception("无可用备份模型")
+    
+    def retry_with_timeout(self, context):
+        """带超时的重试"""
+        while self.retry_count < self.max_retries:
+            try:
+                self.retry_count += 1
+                return self.execute_with_timeout(context)
+            except TimeoutError:
+                self.logger.warning(f"第{self.retry_count}次重试...")
+        
+        raise Exception("超过最大重试次数")</code></pre>
+        </section>
+    </main>
+
+    <footer>
+        蓝海资料掘金营
+    </footer>
+</body>
+</html>

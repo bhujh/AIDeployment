@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INT8量化全流程实战 - 模型量化与压缩技术实战</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50; /* 青草绿 */
+            --secondary-color: #FF9800; /* 活力橙 */
+            --accent-color: #2196F3; /* 天空蓝 */
+            --light-color: #FFF9C4; /* 淡鹅黄 */
+            --background-color: #F5F5F5; /* 浅灰背景 */
+            --text-color: #333333;
+            --border-color: #BDBDBD;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .container {
+            background-color: white;
+            border: 3px double var(--border-color);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        .container::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: -5px;
+            right: -5px;
+            bottom: -5px;
+            border: 2px solid var(--primary-color);
+            border-radius: 20px;
+            z-index: -1;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 2px dashed var(--secondary-color);
+        }
+        h1 {
+            color: var(--primary-color);
+            font-size: 2.8em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        .subtitle {
+            color: var(--accent-color);
+            font-size: 1.4em;
+            font-weight: 300;
+        }
+        h2 {
+            color: var(--secondary-color);
+            border-left: 5px solid var(--accent-color);
+            padding-left: 15px;
+            margin: 30px 0 20px;
+            font-size: 1.8em;
+        }
+        h3 {
+            color: var(--primary-color);
+            margin: 25px 0 15px;
+            font-size: 1.4em;
+        }
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        .highlight-box {
+            background-color: var(--light-color);
+            border-left: 4px solid var(--secondary-color);
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 12px 15px;
+            text-align: left;
+        }
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f1f8e9;
+        }
+        ul, ol {
+            margin-left: 25px;
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        code, pre {
+            background-color: #f4f4f4;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+        }
+        pre {
+            padding: 15px;
+            overflow-x: auto;
+            margin: 20px 0;
+            border-left: 4px solid var(--accent-color);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .svg-container {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background-color: #fafafa;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+        }
+        .architecture {
+            width: 100%;
+            height: 300px;
+        }
+        .step-card {
+            display: flex;
+            align-items: center;
+            background: linear-gradient(to right, #e8f5e9, #f1f8e9);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border: 1px solid #c8e6c9;
+        }
+        .step-number {
+            background-color: var(--primary-color);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2em;
+            margin-right: 20px;
+            flex-shrink: 0;
+        }
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 2px dashed var(--border-color);
+            color: #666;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+        .footer-highlight {
+            color: var(--secondary-color);
+            background-color: var(--light-color);
+            padding: 5px 15px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        .comparison-table {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1px;
+            background-color: var(--border-color);
+            margin: 25px 0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .comparison-header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .comparison-cell {
+            background-color: white;
+            padding: 15px;
+            text-align: center;
+        }
+        .note {
+            background-color: #e3f2fd;
+            border-left: 4px solid var(--accent-color);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>INT8量化全流程实战</h1>
+            <p class="subtitle">从FP32模型到INT8模型的完整转换流程、端侧部署INT8模型、性能基准测试</p>
+            <p><strong>课程章节：8</strong> | <strong>模型量化与压缩技术实战</strong></p>
+        </header>
+
+        <section>
+            <h2>一、INT8量化概述</h2>
+            <p>INT8量化是一种将浮点模型（通常是FP32）转换为8位整数表示的模型压缩技术。它能显著减少模型大小、降低内存占用、加速推理过程，同时保持可接受的精度损失。这是移动端和边缘设备部署深度学习模型的关键技术。</p>
+            
+            <div class="highlight-box">
+                <strong>核心价值：</strong> 在资源受限的设备上实现高效推理，平衡性能、功耗与精度。
+            </div>
+
+            <div class="svg-container">
+                <svg class="architecture" viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#4CAF50;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#2196F3;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <rect x="50" y="80" width="150" height="60" rx="10" fill="#FF9800" stroke="#333" stroke-width="2"/>
+                    <text x="125" y="115" text-anchor="middle" fill="white" font-weight="bold">FP32模型</text>
+                    <path d="M 210 110 L 260 110" stroke="#333" stroke-width="3" marker-end="url(#arrow)"/>
+                    <rect x="260" y="80" width="150" height="60" rx="10" fill="#4CAF50" stroke="#333" stroke-width="2"/>
+                    <text x="335" y="115" text-anchor="middle" fill="white" font-weight="bold">校准与量化</text>
+                    <path d="M 410 110 L 460 110" stroke="#333" stroke-width="3" marker-end="url(#arrow)"/>
+                    <rect x="460" y="80" width="150" height="60" rx="10" fill="#2196F3" stroke="#333" stroke-width="2"/>
+                    <text x="535" y="115" text-anchor="middle" fill="white" font-weight="bold">INT8模型</text>
+                    <path d="M 610 110 L 660 110" stroke="#333" stroke-width="3" marker-end="url(#arrow)"/>
+                    <rect x="660" y="80" width="150" height="60" rx="10" fill="#9C27B0" stroke="#333" stroke-width="2"/>
+                    <text x="735" y="115" text-anchor="middle" fill="white" font-weight="bold">端侧部署</text>
+                    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,6 L9,3 z" fill="#333"/>
+                    </marker>
+                    <text x="400" y="40" text-anchor="middle" fill="#333" font-size="18" font-weight="bold">INT8量化转换全流程</text>
+                </svg>
+            </div>
+        </section>
+
+        <section>
+            <h2>二、完整转换流程详解</h2>
+            <p>INT8量化转换通常包含以下关键步骤，我们将以TensorRT/PyTorch为例进行说明。</p>
+            
+            <div class="step-card">
+                <div class="step-number">1</div>
+                <div>
+                    <h3>准备FP32预训练模型</h3>
+                    <p>加载已经训练好的浮点模型，并确保其处于评估模式。</p>
+                </div>
+            </div>
+
+            <div class="step-card">
+                <div class="step-number">2</div>
+                <div>
+                    <h3>校准数据集准备</h3>
+                    <p>准备具有代表性的校准数据集（通常100-500张图片），用于确定各层的动态范围。</p>
+                </div>
+            </div>
+
+            <div class="step-card">
+                <div class="step-number">3</div>
+                <div>
+                    <h3>校准与量化</h3>
+                    <p>通过校准过程确定每层激活值和权值的缩放因子(scale)和零点(zero point)。</p>
+                </div>
+            </div>
+
+            <div class="step-card">
+                <div class="step-number">4</div>
+                <div>
+                    <h3>模型转换与序列化</h3>
+                    <p>将量化后的模型转换为目标框架格式（如TensorRT engine、TFLite等）并保存。</p>
+                </div>
+            </div>
+
+            <h3>代码示例：PyTorch静态量化</h3>
+<pre>
+import torch
+import torchvision
+import torch.quantization
+
+# 1. 加载预训练FP32模型
+model_fp32 = torchvision.models.resnet18(pretrained=True)
+model_fp32.eval()
+
+# 2. 准备量化配置
+model_fp32.qconfig = torch.quantization.get_default_qconfig('fbgemm')
+model_fp32_prepared = torch.quantization.prepare(model_fp32)
+
+# 3. 使用校准数据集进行校准
+def calibrate_model(model, data_loader):
+    model.eval()
+    with torch.no_grad():
+        for data, target in data_loader:
+            model(data)
+
+# 假设calibration_loader是校准数据加载器
+calibrate_model(model_fp32_prepared, calibration_loader)
+
+# 4. 转换为INT8模型
+model_int8 = torch.quantization.convert(model_fp32_prepared)
+
+# 5. 保存量化模型
+torch.save(model_int8.state_dict(), 'resnet18_int8.pth')
+print("INT8量化模型保存成功！")
+</pre>
+
+            <div class="note">
+                <strong>注意：</strong> 不同框架（TensorFlow、PyTorch、ONNX Runtime）的量化API略有不同，但核心原理一致。
+            </div>
+        </section>
+
+        <section>
+            <h2>三、端侧部署INT8模型</h2>
+            <p>量化后的INT8模型可以部署到各种边缘设备上，以下是常见平台的部署方式：</p>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>部署平台</th>
+                        <th>推荐工具/框架</th>
+                        <th>关键步骤</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Android (移动端)</strong></td>
+                        <td>TensorFlow Lite, NNAPI</td>
+                        <td>1. 转换为TFLite格式<br>2. 集成TFLite解释器<br>3. 调用NNAPI加速</td>
+                    </tr>
+                    <tr>
+                        <td><strong>iOS</strong></td>
+                        <td>Core ML, TFLite</td>
+                        <td>1. 转换为Core ML模型<br>2. 使用Core ML框架加载<br>3. 调用预测接口</td>
+                    </tr>
+                    <tr>
+                        <td><strong>嵌入式设备 (树莓派/Jetson)</strong></td>
+                        <td>TensorRT, TFLite</td>
+                        <td>1. 转换为TensorRT engine<br>2. 编写C++/Python推理代码<br>3. 优化内存与线程</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Web浏览器</strong></td>
+                        <td>TensorFlow.js</td>
+                        <td>1. 转换为TF.js格式<br>2. 使用WebGL/WebAssembly后端<br>3. 前端JavaScript调用</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Android端部署示例代码</h3>
+<pre>
+// Kotlin代码示例 - 使用TFLite加载INT8模型
+class TFLiteClassifier(context: Context) {
+    private var interpreter: Interpreter
+    
+    init {
+        // 1. 加载INT8量化模型
+        val modelFile = loadModelFile(context, "model_int8_quant.tflite")
+        val options = Interpreter.Options()
+        options.setUseNNAPI(true) // 启用NNAPI加速
+        
+        // 2. 创建解释器
+        interpreter = Interpreter(modelFile, options)
+    }
+    
+    fun classify(inputData: ByteBuffer): FloatArray {
+        // 3. 准备输出
+        val output = Array(1) { FloatArray(1000) }
+        
+        // 4. 运行推理 (INT8输入/输出)
+        interpreter.run(inputData, output)
+        
+        return output[0]
+    }
+    
+    private fun loadModelFile(context: Context, filename: String): MappedByteBuffer {
+        val fileDescriptor = context.assets.openFd(filename)
+        val inputStream = FileInputStream(fileDescriptor.fileDescriptor)
+        return inputStream.channel.map(
+            FileChannel.MapMode.READ_ONLY,
+            fileDescriptor.startOffset,
+            fileDescriptor.declaredLength
+        )
+    }
+}
+</pre>
+        </section>
+
+        <section>
+            <h2>四、性能基准测试</h2>
+            <p>量化后必须进行全面的性能评估，确保精度损失在可接受范围内，同时验证加速效果。</p>
+            
+            <div class="comparison-table">
+                <div class="comparison-header">评估指标</div>
+                <div class="comparison-header">FP32模型</div>
+                <div class="comparison-header">INT8模型</div>
+                
+                <div class="comparison-cell"><strong>模型大小</strong></div>
+                <div class="comparison-cell">~45 MB (ResNet-18)</div>
+                <div class="comparison-cell" style="background-color:#e8f5e9;"><strong>~11 MB</strong> (减少75%)</div>
+                
+                <div class="comparison-cell"><strong>推理速度</strong></div>
+                <div class="comparison-cell">100 ms (基准)</div>
+                <div class="comparison-cell" style="background-color:#e8f5e9;"><strong>35 ms</strong> (加速2.8倍)</div>
+                
+                <div class="comparison-cell"><strong>内存占用</strong></div>
+                <div class="comparison-cell">~180 MB</div>
+                <div class="comparison-cell" style="background-color:#e8f5e9;"><strong>~45 MB</strong> (减少75%)</div>
+                
+                <div class="comparison-cell"><strong>Top-1精度</strong></div>
+                <div class="comparison-cell">69.76%</div>
+                <div class="comparison-cell" style="background-color:#ffebee;"><strong>69.02%</strong> (下降0.74%)</div>
+                
+                <div class="comparison-cell"><strong>功耗</strong></div>
+                <div class="comparison-cell">100% (基准)</div>
+                <div class="comparison-cell" style="background-color:#e8f5e9;"><strong>~60%</strong> (降低40%)</div>
+            </div>
+
+            <h3>基准测试脚本示例</h3>
+<pre>
+import time
+import numpy as np
+import psutil  # 用于监控资源
+
+def benchmark_model(model, input_tensor, num_runs=100):
+    """基准测试函数"""
+    # 预热
+    for _ in range(10):
+        _ = model(input_tensor)
+    
+    # 记录开始时间
+    start_time = time.time()
+    start_memory = psutil.Process().memory_info().rss / 1024 / 1024  # MB
+    
+    # 运行多次推理
+    for _ in range(num_runs):
+        outputs = model(input_tensor)
+    
+    # 计算统计信息
+    end_time = time.time()
+    end_memory = psutil.Process().memory_info().rss / 1024 / 1024
+    
+    avg_latency = (end_time - start_time) * 1000 / num_runs  # 毫秒
+    memory_used = end_memory - start_memory
+    
+    print(f"平均延迟: {avg_latency:.2f} ms")
+    print(f"内存占用变化: {memory_used:.2f} MB")
+    print(f"吞吐量: {1000/avg_latency:.2f} FPS")
+    
+    return avg_latency, memory_used
+
+# 对比测试FP32和INT8模型
+print("=== FP32模型基准测试 ===")
+fp32_latency, fp32_memory = benchmark_model(model_fp32, dummy_input)
+
+print("\n=== INT8模型基准测试 ===")
+int8_latency, int8_memory = benchmark_model(model_int8, dummy_input)
+
+print(f"\n=== 性能对比 ===")
+print(f"加速比: {fp32_latency/int8_latency:.2f}x")
+print(f"内存减少: {(fp32_memory-int8_memory)/fp32_memory*100:.1f}%")
+</pre>
+        </section>
+
+        <section>
+            <h2>五、最佳实践与注意事项</h2>
+            <ul>
+                <li><strong>校准数据集选择：</strong> 必须具有代表性，最好来自真实应用场景的分布。</li>
+                <li><strong>敏感层处理：</strong> 第一层和最后一层对量化敏感，可考虑保持FP16精度。</li>
+                <li><strong>精度验证：</strong> 必须在完整的验证集上测试量化后的精度，确保满足应用要求。</li>
+                <li><strong>硬件兼容性：</strong> 确认目标硬件支持INT8指令集（如ARM的Dot Product指令）。</li>
+                <li><strong>量化感知训练：</strong> 对于精度要求高的场景，建议使用量化感知训练而非训练后量化。</li>
+                <li><strong>动态范围调整：</strong> 对于激活值分布不均匀的层，可使用每通道量化(per-channel)。</li>
+            </ul>
+            
+            <div class="highlight-box">
+                <strong>经验法则：</strong> 对于大多数视觉任务，INT8量化可将模型大小减少4倍，推理速度提升2-3倍，精度损失通常小于1%。
+            </div>
+        </section>
+
+        <footer>
+            <p>《模型量化与压缩技术实战》课程材料</p>
+            <div class="footer-highlight">
+                公众号: 蓝海资料掘金营，微信 deep3321
+            </div>
+            <p style="margin-top: 15px; font-size: 0.9em;">© 2026 深度学习工程实践系列课程。保留所有权利。</p>
+        </footer>
+    </div>
+</body>
+</html>

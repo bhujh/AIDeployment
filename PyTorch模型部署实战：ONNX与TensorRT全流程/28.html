@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyTorch模型部署实战：部署监控与维护</title>
+    <style>
+        :root {
+            --primary-blue: #4A90E2;
+            --secondary-green: #7ED321;
+            --accent-yellow: #F8E71C;
+            --accent-orange: #F5A623;
+            --accent-red: #D0021B;
+            --light-bg: #F0F7FF;
+            --card-bg: #FFFFFF;
+            --text-dark: #333333;
+            --text-light: #666666;
+            --shadow: rgba(138, 175, 224, 0.25);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background-color: var(--light-bg);
+            color: var(--text-dark);
+            line-height: 1.6;
+            padding: 0 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, var(--primary-blue), var(--secondary-green));
+            color: white;
+            border-radius: 0 0 20px 20px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 30px var(--shadow);
+        }
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        main {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+        }
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 20px var(--shadow);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border-top: 6px solid var(--primary-blue);
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px var(--shadow);
+        }
+        .card:nth-child(2) { border-top-color: var(--secondary-green); }
+        .card:nth-child(3) { border-top-color: var(--accent-orange); }
+        .card:nth-child(4) { border-top-color: var(--accent-red); }
+        h2 {
+            color: var(--primary-blue);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px dashed var(--accent-yellow);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        h2 svg {
+            width: 28px;
+            height: 28px;
+        }
+        h3 {
+            color: var(--accent-orange);
+            margin: 20px 0 10px;
+        }
+        ul, ol {
+            padding-left: 20px;
+            margin: 15px 0;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px var(--shadow);
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e1e8f0;
+        }
+        th {
+            background-color: var(--primary-blue);
+            color: white;
+            font-weight: 600;
+        }
+        tr:nth-child(even) {
+            background-color: #f8fafd;
+        }
+        pre {
+            background: #f5f9ff;
+            border-left: 4px solid var(--primary-blue);
+            padding: 18px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-size: 0.95rem;
+            color: var(--text-dark);
+        }
+        code {
+            font-family: 'Courier New', monospace;
+            color: var(--accent-red);
+        }
+        .architecture {
+            background: white;
+            padding: 25px;
+            border-radius: 16px;
+            margin: 30px 0;
+            box-shadow: 0 8px 20px var(--shadow);
+        }
+        .architecture svg {
+            width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
+        footer {
+            text-align: center;
+            padding: 30px;
+            margin-top: 40px;
+            color: var(--text-light);
+            border-top: 2px solid var(--accent-yellow);
+            font-size: 1.1rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+        .highlight {
+            background-color: rgba(122, 211, 33, 0.15);
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>部署监控与维护</h1>
+        <p class="subtitle">推理服务监控、模型版本管理、A/B测试与热更新全流程详解</p>
+        <p class="subtitle">《PyTorch模型部署实战：ONNX与TensorRT全流程》第28课</p>
+    </header>
+
+    <main>
+        <section class="card">
+            <h2>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M21 8V7l-3 2-3-2v1l3 2 3-2zm1-5H2C.9 3 0 3.9 0 5v14c0 1.1.9 2 2 2h20c1.1 0 1.99-.9 1.99-2L24 5c0-1.1-.9-2-2-2zM8 6c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm6 12H2v-1c0-2 4-3.1 6-3.1s6 1.1 6 3.1v1zm8-6h-8V6h8v6z"/>
+                </svg>
+                推理服务监控
+            </h2>
+            <p>确保线上模型服务稳定、高效运行的关键环节。通过全方位指标收集与可视化，实现服务状态的可观测性。</p>
+            <h3>核心监控指标</h3>
+            <table>
+                <thead>
+                    <tr><th>类别</th><th>指标</th><th>说明</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>性能</td><td>吞吐量 (QPS)</td><td>每秒处理的请求数</td></tr>
+                    <tr><td>性能</td><td>延迟 (Latency)</td><td>P50, P95, P99 分位响应时间</td></tr>
+                    <tr><td>资源</td><td>GPU利用率</td><td>显存占用、计算核心使用率</td></tr>
+                    <tr><td>资源</td><td>CPU/内存</td><td>系统资源消耗</td></tr>
+                    <tr><td>业务</td><td>请求成功率</td><td>HTTP 200 比例</td></tr>
+                    <tr><td>业务</td><td>模型输出分布</td><td>预测分值、类别分布监控</td></tr>
+                </tbody>
+            </table>
+            <h3>监控系统组成</h3>
+            <ul>
+                <li><span class="highlight">数据采集</span>: 在服务中埋点，使用Prometheus Client导出指标。</li>
+                <li><span class="highlight">存储与查询</span>: Prometheus 作为时序数据库。</li>
+                <li><span class="highlight">可视化</span>: Grafana 配置监控仪表盘。</li>
+                <li><span class="highlight">告警</span>: AlertManager 根据规则发送通知。</li>
+            </ul>
+            <pre><code># 示例：使用Prometheus Client记录推理延迟
+from prometheus_client import Histogram
+import time
+
+INFERENCE_LATENCY = Histogram('model_inference_latency_seconds',
+                              'Model inference latency', ['model_version'])
+
+def inference(request):
+    start_time = time.time()
+    # ... 模型推理逻辑 ...
+    latency = time.time() - start_time
+    INFERENCE_LATENCY.labels(model_version='v1.2').observe(latency)
+    return result</code></pre>
+        </section>
+
+        <section class="card">
+            <h2>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/>
+                </svg>
+                模型版本管理
+            </h2>
+            <p>系统化地管理模型从开发到上线的生命周期，保证版本可追溯、可回滚、环境一致。</p>
+            <h3>版本管理策略</h3>
+            <ol>
+                <li><strong>语义化版本</strong>: 主版本.次版本.修订号 (如 2.1.0)</li>
+                <li><strong>元数据存储</strong>: 模型文件、训练参数、评估指标、数据集快照。</li>
+                <li><strong>版本标签</strong>: 生产版(prod)、测试版(staging)、开发版(dev)。</li>
+            </ol>
+            <h3>常用工具对比</h3>
+            <table>
+                <thead><tr><th>工具</th><th>特点</th><th>适用场景</th></tr></thead>
+                <tbody>
+                    <tr><td>MLflow Model Registry</td><td>集成实验跟踪，UI友好</td><td>中小团队，全流程MLOps</td></tr>
+                    <tr><td>DVC (Data Version Control)</td><td>与Git集成，侧重数据与模型管道</td><td>数据版本控制要求高的项目</td></tr>
+                    <tr><td>自定义+对象存储 (S3/MinIO)</td><td>灵活，成本低</td><td>有较强开发能力的团队</td></tr>
+                </tbody>
+            </table>
+            <pre><code># 模型版本目录结构示例
+models/
+├── image_classification/
+│   ├── v1.0.0/
+│   │   ├── model.onnx
+│   │   ├── metadata.json  # 超参、精度、作者
+│   │   └── signature.json # 输入输出规范
+│   └── v1.1.0/
+│       ├── model.onnx
+│       └── metadata.json
+└── object_detection/
+    └── v2.0.0/</code></pre>
+        </section>
+
+        <section class="card">
+            <h2>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
+                </svg>
+                A/B 测试
+            </h2>
+            <p>科学评估新模型版本或算法策略在真实流量下的效果，为决策提供数据支持。</p>
+            <div class="architecture">
+                <h3>A/B测试流量调度架构</h3>
+                <svg viewBox="0 0 600 300" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="50" y="120" width="100" height="60" rx="10" fill="var(--primary-blue)" stroke="white" stroke-width="2"/>
+                    <text x="100" y="155" text-anchor="middle" fill="white" font-weight="bold">客户端</text>
+                    <path d="M150 150 L200 150" stroke="var(--text-light)" stroke-width="2" marker-end="url(#arrow)"/>
+                    <rect x="200" y="120" width="120" height="60" rx="10" fill="var(--secondary-green)" stroke="white" stroke-width="2"/>
+                    <text x="260" y="155" text-anchor="middle" fill="white" font-weight="bold">流量路由器</text>
+                    <path d="M320 150 L370 90" stroke="var(--text-light)" stroke-width="2" marker-end="url(#arrow)"/>
+                    <path d="M320 150 L370 210" stroke="var(--text-light)" stroke-width="2" marker-end="url(#arrow)"/>
+                    <rect x="370" y="60" width="100" height="60" rx="10" fill="var(--accent-orange)" stroke="white" stroke-width="2"/>
+                    <text x="420" y="95" text-anchor="middle" fill="white" font-weight="bold" font-size="14">模型A (v1.0)</text>
+                    <rect x="370" y="180" width="100" height="60" rx="10" fill="var(--accent-red)" stroke="white" stroke-width="2"/>
+                    <text x="420" y="215" text-anchor="middle" fill="white" font-weight="bold" font-size="14">模型B (v2.0)</text>
+                    <path d="M470 90 L520 90" stroke="var(--text-light)" stroke-width="2" marker-end="url(#arrow)"/>
+                    <path d="M470 210 L520 210" stroke="var(--text-light)" stroke-width="2" marker-end="url(#arrow)"/>
+                    <rect x="520" y="60" width="100" height="60" rx="10" fill="#888" stroke="white" stroke-width="2"/>
+                    <text x="570" y="95" text-anchor="middle" fill="white" font-weight="bold">指标收集</text>
+                    <rect x="520" y="180" width="100" height="60" rx="10" fill="#888" stroke="white" stroke-width="2"/>
+                    <text x="570" y="215" text-anchor="middle" fill="white" font-weight="bold">指标收集</text>
+                    <defs>
+                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" fill="var(--text-light)"/>
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+            <h3>关键步骤</h3>
+            <ul>
+                <li><span class="highlight">流量分割</span>: 基于用户ID、会话ID或随机数进行分流 (如 90% A, 10% B)。</li>
+                <li><span class="highlight">效果指标定义</span>: 业务核心指标 (如点击率、转化率)、性能指标 (延迟)。</li>
+                <li><span class="highlight">统计显著性检验</span>: 使用T-test或卡方检验判断差异是否显著。</li>
+                <li><span class="highlight">决策与全量</span>: 优胜版本逐步放大流量直至全量。</li>
+            </ul>
+        </section>
+
+        <section class="card">
+            <h2>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/>
+                </svg>
+                模型热更新
+            </h2>
+            <p>在不中断服务的情况下，平滑地将线上模型替换为新版本，实现零停机部署。</p>
+            <h3>热更新常见模式</h3>
+            <ol>
+                <li><strong>影子模式</strong>: 新模型并行推理但不返回结果，用于验证正确性与性能。</li>
+                <li><strong>蓝绿部署</strong>: 准备两套完全独立的环境，通过切换流量实现瞬间切换。</li>
+                <li><strong>金丝雀发布</strong>: 先向小部分流量开放新模型，验证无误后逐步扩大范围。</li>
+            </ol>
+            <h3>技术实现要点</h3>
+            <ul>
+                <li><span class="highlight">模型加载隔离</span>: 新模型加载到内存后再切换推理指针，避免加载阻塞请求。</li>
+                <li><span class="highlight">内存管理</span>: 旧模型版本引用计数归零后安全释放GPU显存。</li>
+                <li><span class="highlight">回滚机制</span>: 监控新模型异常时，自动快速切回上一稳定版本。</li>
+            </ul>
+            <pre><code># 简化的热更新管理器伪代码
+class ModelHotSwapper:
+    def __init__(self, model_path):
+        self.current_model = load_model(model_path)
+        self.new_model = None
+
+    def load_new_version(self, new_model_path):
+        # 后台加载新模型，不影响当前服务
+        self.new_model = load_model(new_model_path)
+        warm_up(self.new_model) # 预热
+
+    def swap(self):
+        if self.new_model is not None:
+            old_model = self.current_model
+            self.current_model = self.new_model # 原子切换
+            self.new_model = None
+            schedule_gc(old_model) # 异步释放旧模型
+            log("模型热更新完成")</code></pre>
+        </section>
+    </main>
+
+    <div class="architecture">
+        <h3>部署监控与维护全景架构图</h3>
+        <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
+            <rect x="50" y="50" width="700" height="300" rx="15" fill="white" stroke="var(--primary-blue)" stroke-width="3" stroke-dasharray="5,5"/>
+            <text x="400" y="35" text-anchor="middle" fill="var(--primary-blue)" font-size="18" font-weight="bold">模型服务运维平台</text>
+
+            <!-- 底层基础设施 -->
+            <rect x="100" y="80" width="150" height="50" rx="8" fill="var(--light-bg)" stroke="var(--secondary-green)" stroke-width="2"/>
+            <text x="175" y="112" text-anchor="middle" fill="var(--text-dark)" font-size="14">推理服务集群</text>
+            <rect x="300" y="80" width="150" height="50" rx="8" fill="var(--light-bg)" stroke="var(--secondary-green)" stroke-width="2"/>
+            <text x="375" y="112" text-anchor="middle" fill="var(--text-dark)" font-size="14">模型仓库</text>
+            <rect x="500" y="80" width="150" height="50" rx="8" fill="var(--light-bg)" stroke="var(--secondary-green)" stroke-width="2"/>
+            <text x="575" y="112" text-anchor="middle" fill="var(--text-dark)" font-size="14">监控存储</text>
+
+            <!-- 中间核心组件 -->
+            <rect x="150" y="160" width="120" height="50" rx="8" fill="var(--primary-blue)" stroke="white" stroke-width="2"/>
+            <text x="210" y="192" text-anchor="middle" fill="white" font-size="14">版本管理器</text>
+            <rect x="320" y="160" width="120" height="50" rx="8" fill="var(--accent-orange)" stroke="white" stroke-width="2"/>
+            <text x="380" y="192" text-anchor="middle" fill="white" font-size="14">流量控制器</text>
+            <rect x="490" y="160" width="120" height="50" rx="8" fill="var(--accent-red)" stroke="white" stroke-width="2"/>
+            <text x="550" y="192" text-anchor="middle" fill="white" font-size="14">热更新引擎</text>
+
+            <!-- 上层控制与可视化 -->
+            <rect x="250" y="240" width="120" height="50" rx="8" fill="var(--secondary-green)" stroke="white" stroke-width="2"/>
+            <text x="310" y="272" text-anchor="middle" fill="white" font-size="14">A/B测试分析</text>
+            <rect x="420" y="240" width="120" height="50" rx="8" fill="#888" stroke="white" stroke-width="2"/>
+            <text x="480" y="272" text-anchor="middle" fill="white" font-size="14">告警中心</text>
+
+            <!-- 连接线 -->
+            <path d="M175 130 L175 160" stroke="var(--text-light)" stroke-width="2" stroke-dasharray="3,3"/>
+            <path d="M375 130 L375 160" stroke="var(--text-light)" stroke-width="2" stroke-dasharray="3,3"/>
+            <path d="M575 130 L575 160" stroke="var(--text-light)" stroke-width="2" stroke-dasharray="3,3"/>
+            <path d="M210 210 L210 240" stroke="var(--text-light)" stroke-width="2" stroke-dasharray="3,3"/>
+            <path d="M380 210 L380 240" stroke="var(--text-light)" stroke-width="2" stroke-dasharray="3,3"/>
+            <path d="M550 210 L550 240" stroke="var(--text-light)" stroke-width="2" stroke-dasharray="3,3"/>
+            <path d="M310 290 L310 320" stroke="var(--text-light)" stroke-width="2"/>
+            <path d="M480 290 L480 320" stroke="var(--text-light)" stroke-width="2"/>
+
+            <!-- 用户与管理员 -->
+            <circle cx="400" cy="350" r="25" fill="var(--accent-yellow)"/>
+            <text x="400" y="357" text-anchor="middle" fill="var(--text-dark)" font-size="14" font-weight="bold">运维/业务</text>
+            <path d="M400 325 L400 290" stroke="var(--text-light)" stroke-width="2"/>
+        </svg>
+        <p style="text-align: center; margin-top: 15px; color: var(--text-light);">各组件协同工作，实现模型部署后生命周期的自动化、可视化运维</p>
+    </div>
+
+    <footer>
+        蓝海资料掘金营
+    </footer>
+</body>
+</html>

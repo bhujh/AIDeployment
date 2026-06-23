@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyTorch模型部署实战：INT8量化推理</title>
+    <style>
+        :root {
+            --primary-blue: #4A90E2;
+            --secondary-green: #7ED321;
+            --accent-yellow: #F5A623;
+            --accent-orange: #FF6B35;
+            --light-bg: #F0F7FF;
+            --card-bg: #FFFFFF;
+            --text-dark: #2C3E50;
+            --text-light: #7F8C8D;
+            --shadow: rgba(74, 144, 226, 0.15);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, var(--light-bg) 0%, #E6F2FF 100%);
+            color: var(--text-dark);
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(90deg, var(--primary-blue), var(--secondary-green));
+            color: white;
+            border-radius: 20px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 30px var(--shadow);
+        }
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .chapter-title {
+            color: var(--accent-orange);
+            border-left: 6px solid var(--accent-yellow);
+            padding-left: 15px;
+            margin: 40px 0 20px;
+            font-size: 2rem;
+        }
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 20px var(--shadow);
+            transition: transform 0.3s ease;
+            border: 1px solid rgba(74, 144, 226, 0.1);
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        h2 {
+            color: var(--primary-blue);
+            margin-bottom: 15px;
+            font-size: 1.6rem;
+            display: flex;
+            align-items: center;
+        }
+        h2 svg, h3 svg {
+            margin-right: 10px;
+            width: 24px;
+            height: 24px;
+        }
+        h3 {
+            color: var(--secondary-green);
+            margin: 20px 0 10px;
+            font-size: 1.3rem;
+        }
+        p {
+            margin-bottom: 15px;
+            color: var(--text-light);
+        }
+        ul, ol {
+            padding-left: 25px;
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+            color: var(--text-light);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px var(--shadow);
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #E1E8ED;
+        }
+        th {
+            background-color: var(--primary-blue);
+            color: white;
+            font-weight: 600;
+        }
+        tr:nth-child(even) {
+            background-color: #F8FBFF;
+        }
+        tr:hover {
+            background-color: #E6F0FF;
+        }
+        pre {
+            background: #2C3E50;
+            color: #ECF0F1;
+            padding: 20px;
+            border-radius: 12px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            border-left: 5px solid var(--accent-yellow);
+        }
+        code {
+            background: #E8F4FF;
+            color: var(--primary-blue);
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .svg-container {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 25px 0;
+            display: flex;
+            justify-content: center;
+            overflow-x: auto;
+            box-shadow: 0 5px 15px var(--shadow);
+        }
+        .comparison {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin: 30px 0;
+        }
+        .comparison-item {
+            flex: 1;
+            min-width: 300px;
+            background: white;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 8px 20px var(--shadow);
+        }
+        .comparison-item h4 {
+            color: var(--accent-orange);
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 1.3rem;
+        }
+        footer {
+            text-align: center;
+            margin-top: 60px;
+            padding: 30px;
+            color: var(--text-light);
+            border-top: 2px dashed var(--primary-blue);
+            font-size: 1.1rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+        .highlight {
+            background: linear-gradient(120deg, #FFEAA7 0%, #FFEAA7 100%);
+            padding: 3px 8px;
+            border-radius: 4px;
+            color: #2C3E50;
+            font-weight: 600;
+        }
+        .badge {
+            display: inline-block;
+            background: var(--accent-yellow);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>PyTorch模型部署实战：INT8量化推理</h1>
+            <p class="subtitle">第15章：量化原理、校准表生成、后训练量化、量化感知训练</p>
+            <p>深度学习部署专家 · UI专家 · Markdown专家 联合呈现</p>
+        </header>
+
+        <section class="card">
+            <h2>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+                本章核心目标
+            </h2>
+            <p>INT8量化是模型部署中的关键技术，它能将32位浮点模型转换为8位整数模型，从而大幅减少模型体积、提升推理速度、降低功耗。本章将深入讲解INT8量化的原理、实现方法及实践技巧。</p>
+            <ul>
+                <li><span class="highlight">理解量化原理</span>：从数学角度掌握量化和反量化的过程</li>
+                <li><span class="highlight">掌握校准表生成</span>：学习如何通过校准数据确定量化参数</li>
+                <li><span class="highlight">实践后训练量化</span>：在训练后对模型进行量化，快速获得量化模型</li>
+                <li><span class="highlight">探索量化感知训练</span>：在训练过程中模拟量化，提升量化后精度</li>
+            </ul>
+        </section>
+
+        <h1 class="chapter-title">一、INT8量化原理</h1>
+
+        <section class="card">
+            <h2>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                </svg>
+                为什么需要量化？
+            </h2>
+            <p>深度学习模型通常使用FP32（单精度浮点数）进行训练，但在部署时，这种精度往往不是必需的。量化通过降低数值精度来获得以下优势：</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>指标</th>
+                        <th>FP32模型</th>
+                        <th>INT8量化模型</th>
+                        <th>提升效果</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>模型大小</strong></td>
+                        <td>100%</td>
+                        <td>25%</td>
+                        <td>减少75%</td>
+                    </tr>
+                    <tr>
+                        <td><strong>内存带宽</strong></td>
+                        <td>100%</td>
+                        <td>25%</td>
+                        <td>减少75%</td>
+                    </tr>
+                    <tr>
+                        <td><strong>推理速度</strong></td>
+                        <td>1×</td>
+                        <td>2-4×</td>
+                        <td>提升2-4倍</td>
+                    </tr>
+                    <tr>
+                        <td><strong>功耗</strong></td>
+                        <td>高</td>
+                        <td>低</td>
+                        <td>显著降低</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="card">
+            <h2>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z"/>
+                </svg>
+                量化数学原理
+            </h2>
+            <p>量化的核心是将浮点数值映射到整数范围内，公式如下：</p>
+            <pre>
+# 量化公式
+Q = round(R / S) + Z
+
+# 反量化公式
+R = S * (Q - Z)
+
+其中：
+R: 原始浮点值 (Real value)
+Q: 量化后的整数值 (Quantized value)
+S: 缩放因子 (Scale)
+Z: 零点值 (Zero point)</pre>
+            <p>INT8量化的数值范围是[-128, 127]（有符号）或[0, 255]（无符号）。缩放因子S决定了量化的精度，零点Z确保了0值的精确表示。</p>
+            
+            <div class="svg-container">
+                <svg width="800" height="300" viewBox="0 0 800 300">
+                    <defs>
+                        <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#4A90E2;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#7ED321;stop-opacity:1" />
+                        </linearGradient>
+                        <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                            <path d="M 0 0 L 10 5 L 0 10 z" fill="#FF6B35"/>
+                        </marker>
+                    </defs>
+                    
+                    <!-- FP32范围 -->
+                    <rect x="50" y="50" width="300" height="60" rx="10" fill="url(#grad1)" opacity="0.8"/>
+                    <text x="200" y="85" text-anchor="middle" fill="white" font-size="16" font-weight="bold">FP32数值范围</text>
+                    <text x="200" y="110" text-anchor="middle" fill="white" font-size="14">[-3.4e38, 3.4e38]</text>
+                    
+                    <!-- 量化箭头 -->
+                    <line x1="400" y1="80" x2="450" y2="80" stroke="#FF6B35" stroke-width="3" marker-end="url(#arrow)"/>
+                    <text x="425" y="75" text-anchor="middle" fill="#FF6B35" font-size="14" font-weight="bold">量化</text>
+                    
+                    <!-- INT8范围 -->
+                    <rect x="500" y="50" width="200" height="60" rx="10" fill="#F5A623" opacity="0.9"/>
+                    <text x="600" y="85" text-anchor="middle" fill="white" font-size="16" font-weight="bold">INT8数值范围</text>
+                    <text x="600" y="110" text-anchor="middle" fill="white" font-size="14">[-128, 127]</text>
+                    
+                    <!-- 缩放因子 -->
+                    <text x="400" y="180" text-anchor="middle" fill="#2C3E50" font-size="16">缩放因子 S = (R_max - R_min) / (Q_max - Q_min)</text>
+                    
+                    <!-- 零点 -->
+                    <text x="400" y="210" text-anchor="middle" fill="#2C3E50" font-size="16">零点 Z = Q_max - round(R_max / S)</text>
+                    
+                    <!-- 精度损失说明 -->
+                    <rect x="100" y="240" width="600" height="40" rx="5" fill="#FFEAA7"/>
+                    <text x="400" y="265" text-anchor="middle" fill="#2C3E50" font-size="14">关键挑战：最小化量化过程中的精度损失，通过校准和训练保持模型性能</text>
+                </svg>
+            </div>
+        </section>
+
+        <h1 class="chapter-title">二、校准表生成</h1>
+
+        <section class="card">
+            <h2>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                </svg>
+                校准流程与策略
+            </h2>
+            <p>校准是通过分析模型在代表性数据上的激活值分布，确定每层的最佳量化参数（S和Z）的过程。</p>
+            
+            <h3>校准步骤：</h3>
+            <ol>
+                <li><span class="highlight">准备校准数据集</span>：使用100-500张代表性图像（无需标签）</li>
+                <li><span class="highlight">前向推理收集统计信息</span>：记录每层激活值的分布</li>
+                <li><span class="highlight">选择校准算法</span>：根据分布选择最优量化参数</li>
+                <li><span class="highlight">生成校准表</span>：保存每层的S和Z值</li>
+            </ol>
+            
+            <h3>常用校准算法：</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>算法名称</th>
+                        <th>原理</th>
+                        <th>优点</th>
+                        <th>缺点</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>最大最小值</strong></td>
+                        <td>直接使用激活值的最大最小值</td>
+                        <td>简单快速</td>
+                        <td>对异常值敏感</td>
+                    </tr>
+                    <tr>
+                        <td><strong>熵校准</strong> (Entropy)</td>
+                        <td>最小化量化前后分布的KL散度</td>
+                        <td>精度高，鲁棒性好</td>
+                        <td>计算量较大</td>
+                    </tr>
+                    <tr>
+                        <td><strong>百分位数</strong></td>
+                        <td>使用99%百分位数避免异常值</td>
+                        <td>对异常值鲁棒</td>
+                        <td>可能丢失部分信息</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h3>TensorRT校准示例代码：</h3>
+            <pre>
+import tensorrt as trt
+import pycuda.driver as cuda
+import pycuda.autoinit
+import numpy as np
+
+class Calibrator(trt.IInt8EntropyCalibrator2):
+    def __init__(self, calibration_data, batch_size=32):
+        super().__init__()
+        self.data = calibration_data
+        self.batch_size = batch_size
+        self.current_index = 0
+        self.device_input = cuda.mem_alloc(self.batch_size * 3 * 224 * 224 * 4)
+        
+    def get_batch_size(self):
+        return self.batch_size
+        
+    def get_batch(self, names):
+        if self.current_index + self.batch_size > len(self.data):
+            return None
+            
+        batch = self.data[self.current_index:self.current_index+self.batch_size]
+        self.current_index += self.batch_size
+        
+        # 将数据传输到GPU
+        cuda.memcpy_htod(self.device_input, np.ascontiguousarray(batch))
+        return [int(self.device_input)]
+        
+    def read_calibration_cache(self, *args, **kwargs):
+        # 读取缓存校准表
+        return None
+        
+    def write_calibration_cache(self, cache, *args, **kwargs):
+        # 保存校准表到文件
+        with open("calibration.cache", "wb") as f:
+            f.write(cache)</pre>
+        </section>
+
+        <h1 class="chapter-title">三、后训练量化（PTQ）</h1>
+
+        <section class="card">
+            <h2>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 13H5v-2h14v2z"/>
+                </svg>
+                PTQ工作流程
+            </h2>
+            <p>后训练量化是在模型训练完成后进行的量化，无需重新训练，快速高效。</p>
+            
+            <div class="svg-container">
+                <svg width="800" height="200" viewBox="0 0 800 200">
+                    <defs>
+                        <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#4A90E2;stop-opacity:1" />
+                            <stop offset="50%" style="stop-color:#7ED321;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#F5A623;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    
+                    <!-- 流程步骤 -->
+                    <rect x="50" y="80" width="150" height="60" rx="10" fill="#4A90E2"/>
+                    <text x="125" y="110" text-anchor="middle" fill="white" font-size="14" font-weight="bold">FP32预训练模型</text>
+                    
+                    <rect x="250" y="80" width="150" height="60" rx="10" fill="#7ED321"/>
+                    <text x="325" y="110" text-anchor="middle" fill="white" font-size="14" font-weight="bold">校准数据前向</text>
+                    
+                    <rect x="450" y="80" width="150" height="60" rx="10" fill="#F5A623"/>
+                    <text x="525" y="110" text-anchor="middle" fill="white" font-size="14" font-weight="bold">生成校准表</text>
+                    
+                    <rect x="650" y="80" width="150" height="60" rx="10" fill="#FF6B35"/>
+                    <text x="725" y="110" text-anchor="middle" fill="white" font-size="14" font-weight="bold">INT8量化模型</text>
+                    
+                    <!-- 连接箭头 -->
+                    <polyline points="200,110 250,110" fill="none" stroke="#2C3E50" stroke-width="2" marker-end="url(#arrow)"/>
+                    <polyline points="400,110 450,110" fill="none" stroke="#2C3E50" stroke-width="2" marker-end="url(#arrow)"/>
+                    <polyline points="600,110 650,110" fill="none" stroke="#2C3E50" stroke-width="2" marker-end="url(#arrow)"/>
+                    
+                    <!-- 流程标签 -->
+                    <text x="125" y="170" text-anchor="middle" fill="#2C3E50" font-size="12">输入</text>
+                    <text x="325" y="170" text-anchor="middle" fill="#2C3E50" font-size="12">校准</text>
+                    <text x="525" y="170" text-anchor="middle" fill="#2C3E50" font-size="12">量化</text>
+                    <text x="725" y="170" text-anchor="middle" fill="#2C3E50" font-size="12">输出</text>
+                </svg>
+            </div>
+            
+            <div class="comparison">
+                <div class="comparison-item">
+                    <h4>PyTorch PTQ示例</h4>
+                    <pre>
+import torch
+import torch.quantization as quant
+
+# 1. 加载预训练模型
+model = torchvision.models.resnet18(pretrained=True)
+model.eval()
+
+# 2. 配置量化
+model.qconfig = quant.get_default_qconfig('fbgemm')
+quant.prepare(model, inplace=True)
+
+# 3. 校准（使用校准数据集）
+for data, _ in calibration_loader:
+    model(data)
+    
+# 4. 转换为量化模型
+quant.convert(model, inplace=True)
+
+# 5. 保存量化模型
+torch.save(model.state_dict(), 'resnet18_int8.pth')</pre>
+                </div>
+                
+                <div class="comparison-item">
+                    <h4>ONNX Runtime PTQ示例</h4>
+                    <pre>
+import onnxruntime as ort
+from onnxruntime.quantization import quantize_dynamic, QuantType
+
+# 1. 加载FP32 ONNX模型
+model_path = 'model_fp32.onnx'
+
+# 2. 动态量化（权重INT8，激活FP32）
+quantized_model = quantize_dynamic(
+    model_path,
+    'model_int8.onnx',
+    weight_type=QuantType.QInt8
+)
+
+# 3. 创建量化推理会话
+session = ort.InferenceSession('model_int8.onnx')</pre>
+                </div>
+            </div>
+            
+            <h3>PTQ优缺点分析：</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>优点</th>
+                        <th>缺点</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>✅ 无需重新训练，快速部署</td>
+                        <td>❌ 精度损失可能较大（1-5%）</td>
+                    </tr>
+                    <tr>
+                        <td>✅ 适用于大多数标准模型</td>
+                        <td>❌ 对异常激活分布敏感</td>
+                    </tr>
+                    <tr>
+                        <td>✅ 工具链成熟（TensorRT、ONNX Runtime）</td>
+                        <td>❌ 需要代表性校准数据</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <h1 class="chapter-title">四、量化感知训练（QAT）</h1>
+
+        <section class="card">
+            <h2>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8c-.45-.83-.7-1.79-.7-2.8 0-3.31 2.69-6 6-6zm6.76 1.74L17.3 9.2c.44.84.7 1.79.7 2.8 0 3.31-2.69 6-6 6v-3l-4 4 4 4v-3c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26z"/>
+                </svg>
+                QAT原理与实现
+            </h2>
+            <p>量化感知训练在训练过程中模拟量化效果，让模型提前适应低精度计算，从而减少量化后的精度损失。</p>
+            
+            <div class="svg-container">
+                <svg width="800" height="300" viewBox="0 0 800 300">
+                    <!-- QAT训练流程 -->
+                    <rect x="50" y="50" width="700" height="200" rx="10" fill="#F8FBFF" stroke="#4A90E2" stroke-width="2"/>
+                    
+                    <!-- 前向传播 -->
+                    <rect x="100" y="100" width="150" height="60" rx="8" fill="#4A90E2"/>
+                    <text x="175" y="130" text-anchor="middle" fill="white" font-size="13" font-weight="bold">FP32前向计算</text>
+                    
+                    <!-- 模拟量化 -->
+                    <rect x="300" y="100" width="150" height="60" rx="8" fill="#7ED321"/>
+                    <text x="375" y="130" text-anchor="middle" fill="white" font-size="13" font-weight="bold">插入伪量化节点</text>
+                    
+                    <!-- 反向传播 -->
+                    <rect x="500" y="100" width="150" height="60" rx="8" fill="#F5A623"/>
+                    <text x="575" y="130" text-anchor="middle" fill="white" font-size="13" font-weight="bold">STE反向传播</text>
+                    
+                    <!-- 连接线 -->
+                    <polyline points="250,130 300,130" fill="none" stroke="#2C3E50" stroke-width="2" marker-end="url(#arrow)"/>
+                    <polyline points="450,130 500,130" fill="none" stroke="#2C3E50" stroke-width="2" marker-end="url(#arrow)"/>
+                    
+                    <!-- 循环箭头 -->
+                    <path d="M 650 130 Q 700 130 700 180 Q 700 230 100 230 Q 50 230 50 180 Q 50 130 100 130" 
+                          fill="none" stroke="#FF6B35" stroke-width="2" stroke-dasharray="5,5"/>
+                    <polygon points="100,135 110,130 100,125" fill="#FF6B35"/>
+                    
+                    <!-- 标签 -->
+                    <text x="175" y="190" text-anchor="middle" fill="#2C3E50" font-size="12">计算浮点值</text>
+                    <text x="375" y="190" text-anchor="middle" fill="#2C3E50" font-size="12">模拟量化/反量化</text>
+                    <text x="575" y="190" text-anchor="middle" fill="#2C3E50" font-size="12">直通估计器(STE)</text>
+                    
+                    <text x="400" y="260" text-anchor="middle" fill="#FF6B35" font-size="14" font-weight="bold">
+                        迭代训练，使模型适应量化噪声
+                    </text>
+                </svg>
+            </div>
+            
+            <h3>PyTorch QAT完整示例：</h3>
+            <pre>
+import torch
+import torch.nn as nn
+import torch.quantization as quant
+
+# 1. 定义带有QAT的模型
+class QATModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.quant = quant.QuantStub()      # 量化起点
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=3)
+        self.relu = nn.ReLU()
+        self.conv2 = nn.Conv2d(64, 128, kernel_size=3)
+        self.dequant = quant.DeQuantStub()  # 反量化终点
+        
+    def forward(self, x):
+        x = self.quant(x)      # 标记量化开始
+        x = self.conv1(x)
+        x = self.relu(x)
+        x = self.conv2(x)
+        x = self.dequant(x)    # 标记量化结束
+        return x
+
+# 2. 准备QAT模型
+model = QATModel()
+model.qconfig = quant.get_default_qat_qconfig('fbgemm')
+quant.prepare_qat(model, inplace=True)
+
+# 3. QAT训练（模拟量化）
+model.train()
+for epoch in range(10):
+    for data, target in train_loader:
+        output = model(data)
+        loss = nn.functional.cross_entropy(output, target)
+        loss.backward()
+        optimizer.step()
+        optimizer.zero_grad()
+
+# 4. 转换为量化模型
+model.eval()
+model_int8 = quant.convert(model, inplace=False)
+
+# 5. 保存和评估
+torch.save(model_int8.state_dict(), 'qat_model_int8.pth')</pre>
+            
+            <h3>QAT vs PTQ 对比：</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>对比维度</th>
+                        <th>后训练量化 (PTQ)</th>
+                        <th>量化感知训练 (QAT)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>精度损失</strong></td>
+                        <td>通常1-5%</td>
+                        <td>通常&lt;1%</td>
+                    </tr>
+                    <tr>
+                        <td><strong>训练成本</strong></td>
+                        <td>无需训练</td>
+                        <td>需要额外训练时间</td>
+                    </tr>
+                    <tr>
+                        <td><strong>适用场景</strong></td>
+                        <td>快速部署、标准模型</td>
+                        <td>高精度要求、自定义模型</td>
+                    </tr>
+                    <tr>
+                        <td><strong>实现复杂度</strong></td>
+                        <td>简单</td>
+                        <td>复杂</td>
+                    </tr>
+                    <tr>
+                        <td><strong>校准数据</strong></td>
+                        <td>必需</td>
+                        <td>可选</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="card">
+            <h2>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                最佳实践与总结
+            </h2>
+            <h3>INT8量化部署 checklist：</h3>
+            <ul>
+                <li><input type="checkbox" checked> 确定量化目标：速度优先还是精度优先？</li>
+                <li><input type="checkbox" checked> 选择合适的量化方法：PTQ 或 QAT？</li>
+                <li><input type="checkbox" checked> 准备代表性校准数据集（100-500样本）</li>
+                <li><input type="checkbox" checked> 测试量化模型精度，确保满足业务要求</li>
+                <li><input type="checkbox" checked> 验证目标平台（TensorRT、ONNX Runtime等）支持情况</li>
+                <li><input type="checkbox" checked> 性能测试：延迟、吞吐量、内存占用</li>
+                <li><input type="checkbox" checked> 监控线上量化模型性能，建立回退机制</li>
+            </ul>
+            
+            <h3>常见问题与解决方案：</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>问题</th>
+                        <th>可能原因</th>
+                        <th>解决方案</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>精度下降过多</td>
+                        <td>校准数据不具代表性</td>
+                        <td>使用更多样化的校准数据</td>
+                    </tr>
+                    <tr>
+                        <td>量化后速度未提升</td>
+                        <td>某些层未成功量化</td>
+                        <td>检查量化层覆盖，使用混合精度</td>
+                    </tr>
+                    <tr>
+                        <td>部署时出错</td>
+                        <td>目标平台不支持某些算子</td>
+                        <td>替换为支持的算子或自定义实现</td>
+                    </tr>
+                    <tr>
+                        <td>激活值分布异常</td>
+                        <td>模型中有大数值激活</td>
+                        <td>使用百分位数校准或添加激活层约束</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h3>技术选型建议：</h3>
+            <div class="comparison">
+                <div class="comparison-item">
+                    <h4>🔵 推荐PTQ的场景</h4>
+                    <ul>
+                        <li>标准视觉模型（ResNet、MobileNet等）</li>
+                        <li>快速原型验证和部署</li>
+                        <li>资源受限，无法重新训练</li>
+                        <li>精度要求相对宽松（允许1-2%损失）</li>
+                    </ul>
+                </div>
+                <div class="comparison-item

@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyTorch模型部署实战：ONNX格式详解</title>
+    <style>
+        :root {
+            --primary-blue: #4A90E2;
+            --secondary-green: #7ED321;
+            --accent-orange: #F5A623;
+            --light-yellow: #FFF9C4;
+            --light-blue: #E3F2FD;
+            --light-green: #F1F8E9;
+            --text-dark: #333333;
+            --text-light: #666666;
+            --white: #FFFFFF;
+            --shadow: rgba(0, 0, 0, 0.1);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, var(--light-blue) 0%, var(--light-green) 100%);
+            color: var(--text-dark);
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: var(--white);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px var(--shadow);
+            overflow: hidden;
+            padding: 30px;
+            border: 8px solid var(--primary-blue);
+        }
+        header {
+            text-align: center;
+            padding: 30px 20px;
+            background: linear-gradient(90deg, var(--primary-blue), var(--secondary-green));
+            color: white;
+            border-radius: 15px 15px 0 0;
+            margin-bottom: 30px;
+        }
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        h2 {
+            color: var(--primary-blue);
+            border-left: 6px solid var(--accent-orange);
+            padding-left: 15px;
+            margin: 40px 0 20px;
+            font-size: 1.8rem;
+        }
+        h3 {
+            color: var(--secondary-green);
+            margin: 25px 0 15px;
+            font-size: 1.4rem;
+        }
+        p {
+            margin-bottom: 15px;
+            color: var(--text-light);
+        }
+        .card {
+            background-color: var(--light-yellow);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 2px dashed var(--accent-orange);
+        }
+        .highlight {
+            background-color: var(--light-blue);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 4px 8px var(--shadow);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: var(--primary-blue);
+            color: white;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: var(--light-green);
+        }
+        tr:hover {
+            background-color: var(--light-yellow);
+        }
+        ul, ol {
+            padding-left: 30px;
+            margin: 15px 0;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        pre {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 20px 0;
+            border-left: 5px solid var(--accent-orange);
+            font-family: 'Consolas', monospace;
+            white-space: pre-wrap;
+        }
+        code {
+            background-color: #eee;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+            color: #d63384;
+        }
+        .svg-container {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background-color: white;
+            border-radius: 15px;
+            border: 3px solid var(--secondary-green);
+        }
+        .architecture {
+            width: 100%;
+            height: 300px;
+            background: linear-gradient(45deg, var(--light-blue), var(--light-green));
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 25px;
+            background: linear-gradient(90deg, var(--primary-blue), var(--secondary-green));
+            color: white;
+            border-radius: 15px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+        .note {
+            background-color: #FFF3CD;
+            border-left: 5px solid var(--accent-orange);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 10px 10px 0;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+        .grid-item {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px var(--shadow);
+            border-top: 5px solid var(--primary-blue);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>PyTorch模型部署实战</h1>
+            <p class="subtitle">第五讲：ONNX格式详解</p>
+            <p>ONNX计算图结构、算子集、数据类型、模型元数据</p>
+        </header>
+
+        <section>
+            <h2>一、ONNX概述</h2>
+            <p><strong>ONNX（Open Neural Network Exchange）</strong>是一个开放的格式，用于表示深度学习模型。它允许模型在不同的框架之间进行转换，从而实现跨平台部署。</p>
+            <div class="card">
+                <p>🎯 <strong>核心目标</strong>：实现模型在不同框架（如PyTorch, TensorFlow, MXNet）之间的互操作性，简化部署流程。</p>
+            </div>
+            <div class="svg-container">
+                <svg width="100%" height="200" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="10" y="80" width="180" height="60" rx="10" fill="#4A90E2" stroke="#2C6FB7" stroke-width="2"/>
+                    <text x="100" y="115" text-anchor="middle" fill="white" font-size="16" font-weight="bold">PyTorch</text>
+                    <rect x="210" y="80" width="180" height="60" rx="10" fill="#7ED321" stroke="#5AAE1E" stroke-width="2"/>
+                    <text x="300" y="115" text-anchor="middle" fill="white" font-size="16" font-weight="bold">ONNX</text>
+                    <rect x="410" y="80" width="180" height="60" rx="10" fill="#F5A623" stroke="#D18A1A" stroke-width="2"/>
+                    <text x="500" y="115" text-anchor="middle" fill="white" font-size="16" font-weight="bold">TensorRT</text>
+                    <polygon points="190,110 210,110 200,100" fill="#2C6FB7"/>
+                    <polygon points="390,110 410,110 400,100" fill="#5AAE1E"/>
+                    <line x1="190" y1="110" x2="210" y2="110" stroke="#2C6FB7" stroke-width="3"/>
+                    <line x1="390" y1="110" x2="410" y2="110" stroke="#5AAE1E" stroke-width="3"/>
+                    <text x="100" y="170" text-anchor="middle" fill="#333" font-size="14">训练框架</text>
+                    <text x="300" y="170" text-anchor="middle" fill="#333" font-size="14">交换格式</text>
+                    <text x="500" y="170" text-anchor="middle" fill="#333" font-size="14">推理引擎</text>
+                </svg>
+                <p><em>ONNX作为桥梁连接训练框架与推理引擎</em></p>
+            </div>
+        </section>
+
+        <section>
+            <h2>二、ONNX计算图结构</h2>
+            <p>ONNX使用<strong>有向无环图（DAG）</strong>来表示模型的计算过程。图中包含节点（算子）、边（数据张量）和初始化器（常量）。</p>
+            <div class="grid">
+                <div class="grid-item">
+                    <h3>📊 计算图组成</h3>
+                    <ul>
+                        <li><strong>节点（Node）</strong>：代表一个算子或操作（如Conv, Relu）。</li>
+                        <li><strong>边（Edge）</strong>：代表张量数据流，连接各个节点。</li>
+                        <li><strong>初始化器（Initializer）</strong>：存储模型中的权重和偏置等常量。</li>
+                        <li><strong>输入/输出（Input/Output）</strong>：定义图的入口和出口。</li>
+                    </ul>
+                </div>
+                <div class="grid-item">
+                    <h3>🔗 图示例（简化）</h3>
+                    <pre>
+# 伪代码表示一个简单的线性层+激活函数
+Input X -> MatMul (W) -> Add (B) -> Relu -> Output Y
+# 对应ONNX图：
+# 节点: MatMul, Add, Relu
+# 边: X, W, B, 中间结果, Y
+                    </pre>
+                </div>
+            </div>
+            <div class="note">
+                <p>💡 <strong>注意</strong>：ONNX图是静态的，意味着图的结构在导出时就已经固定，不支持动态控制流（如循环、条件判断）。</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>三、ONNX算子集（Opset）</h2>
+            <p>ONNX定义了一套标准的算子集合，每个算子都有其特定的版本（opset version）。随着ONNX的发展，算子集会不断更新和扩展。</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>算子类别</th>
+                        <th>示例算子</th>
+                        <th>主要功能</th>
+                        <th>支持版本</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>张量操作</td>
+                        <td>Reshape, Concat, Slice</td>
+                        <td>改变张量形状、连接、切片</td>
+                        <td>opset 1+</td>
+                    </tr>
+                    <tr>
+                        <td>神经网络</td>
+                        <td>Conv, BatchNormalization, Gemm</td>
+                        <td>卷积、批归一化、全连接</td>
+                        <td>opset 1+</td>
+                    </tr>
+                    <tr>
+                        <td>激活函数</td>
+                        <td>Relu, Sigmoid, Tanh</td>
+                        <td>非线性激活</td>
+                        <td>opset 1+</td>
+                    </tr>
+                    <tr>
+                        <td>规约操作</td>
+                        <td>ReduceMean, ReduceSum</td>
+                        <td>统计计算</td>
+                        <td>opset 1+</td>
+                    </tr>
+                    <tr>
+                        <td>控制流（有限）</td>
+                        <td>Loop, If</td>
+                        <td>循环与条件</td>
+                        <td>opset 11+</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="highlight">
+                <p>🔧 <strong>Opset版本选择</strong>：导出ONNX模型时需要指定opset版本。较高的版本支持更多算子，但需确保推理引擎兼容该版本。</p>
+                <pre>
+# PyTorch导出时指定opset版本
+torch.onnx.export(model, dummy_input, "model.onnx",
+                  opset_version=13,  # 指定版本
+                  input_names=['input'],
+                  output_names=['output'])
+                </pre>
+            </div>
+        </section>
+
+        <section>
+            <h2>四、ONNX数据类型</h2>
+            <p>ONNX定义了丰富的数据类型，以支持不同精度和类型的张量。</p>
+            <div class="grid">
+                <div class="grid-item">
+                    <h3>🧮 主要数据类型</h3>
+                    <ul>
+                        <li><strong>FLOAT</strong>：32位浮点数（最常用）</li>
+                        <li><strong>FLOAT16</strong>：16位半精度浮点数</li>
+                        <li><strong>INT32, INT64</strong>：32/64位整数</li>
+                        <li><strong>UINT8</strong>：8位无符号整数（用于量化）</li>
+                        <li><strong>BOOL</strong>：布尔类型</li>
+                        <li><strong>STRING</strong>：字符串类型（较少使用）</li>
+                    </ul>
+                </div>
+                <div class="grid-item">
+                    <h3>📐 张量形状表示</h3>
+                    <p>ONNX使用<strong>符号维度</strong>支持动态形状，常用占位符：</p>
+                    <ul>
+                        <li><code>batch_size</code>：批处理大小</li>
+                        <li><code>seq_len</code>：序列长度</li>
+                        <li><code>-1</code>：表示该维度可变</li>
+                    </ul>
+                    <pre>
+# 动态形状示例：输入形状为 [batch, 3, 224, 224]
+# 其中batch维度可变
+                    </pre>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>五、模型元数据（Metadata）</h2>
+            <p>ONNX模型除了计算图外，还包含重要的元数据信息，用于描述模型的背景、版本和生产者等。</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>字段名</th>
+                        <th>说明</th>
+                        <th>示例</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>producer_name</td>
+                        <td>生成模型的框架名称</td>
+                        <td>pytorch</td>
+                    </tr>
+                    <tr>
+                        <td>producer_version</td>
+                        <td>框架版本</td>
+                        <td>1.12.0</td>
+                    </tr>
+                    <tr>
+                        <td>ir_version</td>
+                        <td>ONNX中间表示版本</td>
+                        <td>8</td>
+                    </tr>
+                    <tr>
+                        <td>opset_import</td>
+                        <td>引用的算子集版本</td>
+                        <td>ai.onnx:13</td>
+                    </tr>
+                    <tr>
+                        <td>doc_string</td>
+                        <td>模型描述文档</td>
+                        <td>ResNet50图像分类模型</td>
+                    </tr>
+                    <tr>
+                        <td>model_version</td>
+                        <td>模型版本号</td>
+                        <td>1</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="card">
+                <h3>🔍 查看元数据示例代码</h3>
+                <pre>
+import onnx
+
+model = onnx.load("model.onnx")
+# 打印模型元数据
+print("生产者:", model.producer_name)
+print("版本:", model.producer_version)
+print("IR版本:", model.ir_version)
+print("算子集:", model.opset_import)
+print("文档:", model.doc_string)
+                </pre>
+            </div>
+        </section>
+
+        <section>
+            <h2>六、ONNX软件架构图</h2>
+            <div class="svg-container">
+                <svg width="100%" height="350" xmlns="http://www.w3.org/2000/svg">
+                    <!-- 顶层：框架 -->
+                    <rect x="50" y="20" width="200" height="60" rx="10" fill="#4A90E2" stroke="#2C6FB7" stroke-width="2"/>
+                    <text x="150" y="55" text-anchor="middle" fill="white" font-size="16" font-weight="bold">训练框架</text>
+                    <text x="150" y="75" text-anchor="middle" fill="white" font-size="12">PyTorch, TensorFlow</text>
+
+                    <rect x="350" y="20" width="200" height="60" rx="10" fill="#4A90E2" stroke="#2C6FB7" stroke-width="2"/>
+                    <text x="450" y="55" text-anchor="middle" fill="white" font-size="16" font-weight="bold">转换工具</text>
+                    <text x="450" y="75" text-anchor="middle" fill="white" font-size="12">torch.onnx.export</text>
+
+                    <rect x="650" y="20" width="200" height="60" rx="10" fill="#4A90E2" stroke="#2C6FB7" stroke-width="2"/>
+                    <text x="750" y="55" text-anchor="middle" fill="white" font-size="16" font-weight="bold">ONNX Runtime</text>
+                    <text x="750" y="75" text-anchor="middle" fill="white" font-size="12">推理引擎</text>
+
+                    <!-- 中层：ONNX核心 -->
+                    <rect x="300" y="130" width="400" height="100" rx="15" fill="#7ED321" stroke="#5AAE1E" stroke-width="3"/>
+                    <text x="500" y="160" text-anchor="middle" fill="white" font-size="24" font-weight="bold">ONNX 格式</text>
+                    <line x1="500" y1="170" x2="500" y2="190" stroke="white" stroke-width="2"/>
+                    <text x="500" y="210" text-anchor="middle" fill="white" font-size="14">计算图 | 算子集 | 数据类型 | 元数据</text>
+
+                    <!-- 下层：推理 -->
+                    <rect x="50" y="270" width="200" height="60" rx="10" fill="#F5A623" stroke="#D18A1A" stroke-width="2"/>
+                    <text x="150" y="305" text-anchor="middle" fill="white" font-size="16" font-weight="bold">TensorRT</text>
+
+                    <rect x="350" y="270" width="200" height="60" rx="10" fill="#F5A623" stroke="#D18A1A" stroke-width="2"/>
+                    <text x="450" y="305" text-anchor="middle" fill="white" font-size="16" font-weight="bold">OpenVINO</text>
+
+                    <rect x="650" y="270" width="200" height="60" rx="10" fill="#F5A623" stroke="#D18A1A" stroke-width="2"/>
+                    <text x="750" y="305" text-anchor="middle" fill="white" font-size="16" font-weight="bold">NCNN</text>
+
+                    <!-- 连接线 -->
+                    <polyline points="150,80 150,100 500,100 500,130" fill="none" stroke="#2C6FB7" stroke-width="2" stroke-dasharray="5,5"/>
+                    <polyline points="450,80 450,100 500,100" fill="none" stroke="#2C6FB7" stroke-width="2" stroke-dasharray="5,5"/>
+                    <polyline points="750,80 750,100 500,100" fill="none" stroke="#2C6FB7" stroke-width="2" stroke-dasharray="5,5"/>
+
+                    <polyline points="300,180 250,180 250,270" fill="none" stroke="#5AAE1E" stroke-width="2"/>
+                    <polyline points="700,180 750,180 750,270" fill="none" stroke="#5AAE1E" stroke-width="2"/>
+                    <line x1="500" y1="230" x2="500" y2="270" stroke="#5AAE1E" stroke-width="2"/>
+
+                    <!-- 箭头 -->
+                    <polygon points="500,130 510,125 510,135" fill="#5AAE1E"/>
+                    <polygon points="500,270 510,265 510,275" fill="#D18A1A"/>
+                </svg>
+                <p><em>ONNX在深度学习部署生态系统中的核心位置</em></p>
+            </div>
+        </section>
+
+        <section>
+            <h2>七、总结与最佳实践</h2>
+            <div class="grid">
+                <div class="grid-item">
+                    <h3>✅ 最佳实践</h3>
+                    <ol>
+                        <li>导出时指定合适的<strong>opset版本</strong>，平衡功能与兼容性。</li>
+                        <li>使用<strong>动态形状</strong>提高模型灵活性，但需测试边界情况。</li>
+                        <li>导出后使用<code>onnx.checker</code>验证模型正确性。</li>
+                        <li>利用<code>onnx.helper</code>工具修改和优化模型。</li>
+                        <li>记录完整的元数据，便于后续维护和版本管理。</li>
+                    </ol>
+                </div>
+                <div class="grid-item">
+                    <h3>⚠️ 常见陷阱</h3>
+                    <ul>
+                        <li>动态控制流（如循环）支持有限，需谨慎使用。</li>
+                        <li>某些PyTorch算子可能没有对应的ONNX算子。</li>
+                        <li>不同推理引擎对ONNX标准的支持程度不同。</li>
+                        <li>数据类型转换可能导致精度损失。</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="highlight">
+                <p>🚀 <strong>下一步</strong>：掌握ONNX格式后，可以进一步学习ONNX Runtime推理加速、模型优化（如量化、图优化）以及与其他推理引擎（TensorRT）的集成。</p>
+            </div>
+        </section>
+
+        <footer>
+            蓝海资料掘金营
+        </footer>
+    </div>
+</body>
+</html>

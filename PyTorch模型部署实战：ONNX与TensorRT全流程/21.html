@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLOv5模型部署实战 - PyTorch模型部署实战</title>
+    <style>
+        :root {
+            --primary-blue: #4A90E2; /* 天蓝 */
+            --primary-green: #7ED321; /* 嫩绿 */
+            --primary-yellow: #F5A623; /* 明黄 */
+            --primary-orange: #FF6B35; /* 橘橙 */
+            --primary-purple: #9013FE; /* 淡紫 */
+            --light-bg: #F8F9FA; /* 浅灰背景 */
+            --text-dark: #333333;
+            --text-light: #666666;
+            --white: #FFFFFF;
+            --shadow: rgba(0, 0, 0, 0.1);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #e0f7fa 0%, #fce4ec 100%);
+            color: var(--text-dark);
+            line-height: 1.6;
+            padding: 0;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            background: linear-gradient(90deg, var(--primary-blue), var(--primary-purple));
+            color: white;
+            padding: 2.5rem 1rem;
+            border-radius: 0 0 20px 20px;
+            text-align: center;
+            margin-bottom: 2.5rem;
+            box-shadow: 0 10px 30px var(--shadow);
+        }
+        header h1 {
+            font-size: 2.8rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        header .subtitle {
+            font-size: 1.3rem;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .card {
+            background-color: var(--white);
+            border-radius: 18px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 25px var(--shadow);
+            border-left: 8px solid var(--primary-green);
+            transition: transform 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .card h2 {
+            color: var(--primary-blue);
+            border-bottom: 3px solid var(--primary-yellow);
+            padding-bottom: 0.7rem;
+            margin-bottom: 1.5rem;
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+        }
+        .card h2 svg {
+            margin-right: 10px;
+            width: 28px;
+            height: 28px;
+        }
+        .card h3 {
+            color: var(--primary-orange);
+            margin: 1.5rem 0 1rem 0;
+            font-size: 1.4rem;
+        }
+        .content-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        @media (max-width: 768px) {
+            .content-section {
+                grid-template-columns: 1fr;
+            }
+        }
+        ul, ol {
+            padding-left: 1.8rem;
+            margin: 1rem 0;
+        }
+        li {
+            margin-bottom: 0.7rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        th {
+            background-color: var(--primary-blue);
+            color: white;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+        }
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f0f7ff;
+        }
+        pre {
+            background: linear-gradient(90deg, #2d3436, #636e72);
+            color: #dfe6e9;
+            padding: 1.5rem;
+            border-radius: 12px;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.95rem;
+            border-left: 5px solid var(--primary-green);
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+        }
+        code {
+            background-color: #f1f8ff;
+            color: var(--primary-purple);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+        }
+        .svg-container {
+            background-color: var(--white);
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+            margin: 1.5rem 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        .svg-container svg {
+            max-width: 100%;
+            height: auto;
+        }
+        .highlight {
+            background-color: #fff9c4;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-weight: bold;
+            color: #333;
+        }
+        .tip-box {
+            background-color: #e8f5e9;
+            border-left: 6px solid var(--primary-green);
+            padding: 1.2rem;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+        }
+        .warning-box {
+            background-color: #fff3e0;
+            border-left: 6px solid var(--primary-orange);
+            padding: 1.2rem;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+        }
+        footer {
+            background: linear-gradient(90deg, var(--primary-blue), var(--primary-purple));
+            color: white;
+            text-align: center;
+            padding: 2rem;
+            margin-top: 3rem;
+            border-radius: 20px 20px 0 0;
+            font-size: 1.2rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+            box-shadow: 0 -5px 20px var(--shadow);
+        }
+        .step-number {
+            display: inline-block;
+            background-color: var(--primary-yellow);
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 32px;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        .badge {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .badge-blue { background-color: #bbdefb; color: #1565c0; }
+        .badge-green { background-color: #c8e6c9; color: #2e7d32; }
+        .badge-orange { background-color: #ffe0b2; color: #ef6c00; }
+        .badge-purple { background-color: #e1bee7; color: #7b1fa2; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>目标检测模型部署实战：YOLO系列模型转换与优化</h1>
+            <p class="subtitle">以YOLOv5为例，详解从PyTorch到ONNX再到TensorRT的全流程部署与性能优化策略</p>
+        </header>
+
+        <div class="content-section">
+            <div>
+                <div class="card">
+                    <h2>
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12,2L1,21H23M12,6L19.53,19H4.47M11,10V14H13V10M11,16V18H13V16"/>
+                        </svg>
+                        课程概述
+                    </h2>
+                    <p>本课程将带领大家完成一个完整的工业级目标检测模型部署流程。我们将以当前流行的 <span class="highlight">YOLOv5</span> 模型为例，从PyTorch训练好的模型出发，经过 <span class="highlight">ONNX</span> 中间表示转换，最终部署到 <span class="highlight">NVIDIA TensorRT</span> 推理引擎上，实现高性能的实时推理。</p>
+                    <div class="tip-box">
+                        <strong>学习目标：</strong>掌握YOLO系列模型部署的核心技术栈，能够独立完成从训练模型到生产环境部署的全流程。
+                    </div>
+                    <p><span class="badge badge-blue">目标检测</span> <span class="badge badge-green">模型部署</span> <span class="badge badge-orange">性能优化</span> <span class="badge badge-purple">工业实践</span></p>
+                </div>
+
+                <div class="card">
+                    <h2>
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19,3H5C3.89,3 3,3.89 3,5V19C3,20.1 3.9,21 5,21H19C20.1,21 21,20.1 21,19V5C21,3.89 20.1,3 19,3M19,19H5V5H19V19M17,8.4L13.4,12L17,15.6L15.6,17L12,13.4L8.4,17L7,15.6L10.6,12L7,8.4L8.4,7L12,10.6L15.6,7L17,8.4Z"/>
+                        </svg>
+                        关键技术挑战
+                    </h2>
+                    <ul>
+                        <li><strong>模型兼容性：</strong>PyTorch模型到ONNX的算子支持与转换正确性</li>
+                        <li><strong>后处理集成：</strong>YOLO的NMS（非极大值抑制）在部署中的实现方式</li>
+                        <li><strong>精度与速度平衡：</strong>FP16/INT8量化带来的精度损失与加速收益</li>
+                        <li><strong>动态尺寸支持：</strong>处理不同分辨率输入图像的动态Shape支持</li>
+                        <li><strong>多平台适配：</strong>同一模型在Jetson、X86等不同硬件上的适配</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div>
+                <div class="card">
+                    <h2>
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M13,9H18.5L13,3.5V9M6,2H14L20,8V20A2,2 0 0,1 18,22H6C4.89,22 4,21.1 4,20V4C4,2.89 4.89,2 6,2M15,18V16H6V18H15M18,14V12H6V14H18Z"/>
+                        </svg>
+                        部署流程总览
+                    </h2>
+                    <div class="svg-container">
+                        <svg viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" style="stop-color:#4A90E2;stop-opacity:1" />
+                                    <stop offset="100%" style="stop-color:#9013FE;stop-opacity:1" />
+                                </linearGradient>
+                                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                    <polygon points="0 0, 10 3.5, 0 7" fill="#4A90E2"/>
+                                </marker>
+                            </defs>
+                            <rect x="50" y="120" width="140" height="60" rx="10" fill="#7ED321" stroke="#4CAF50" stroke-width="2"/>
+                            <text x="120" y="155" text-anchor="middle" fill="white" font-weight="bold" font-size="16">PyTorch模型</text>
+                            <path d="M190 150 L250 150" stroke="#4A90E2" stroke-width="3" marker-end="url(#arrowhead)"/>
+                            <rect x="250" y="120" width="140" height="60" rx="10" fill="#F5A623" stroke="#FF9800" stroke-width="2"/>
+                            <text x="320" y="155" text-anchor="middle" fill="white" font-weight="bold" font-size="16">ONNX转换</text>
+                            <path d="M390 150 L450 150" stroke="#4A90E2" stroke-width="3" marker-end="url(#arrowhead)"/>
+                            <rect x="450" y="120" width="140" height="60" rx="10" fill="#FF6B35" stroke="#F4511E" stroke-width="2"/>
+                            <text x="520" y="155" text-anchor="middle" fill="white" font-weight="bold" font-size="16">TensorRT优化</text>
+                            <path d="M590 150 L650 150" stroke="#4A90E2" stroke-width="3" marker-end="url(#arrowhead)"/>
+                            <rect x="650" y="120" width="140" height="60" rx="10" fill="#9013FE" stroke="#7B1FA2" stroke-width="2"/>
+                            <text x="720" y="155" text-anchor="middle" fill="white" font-weight="bold" font-size="16">部署推理</text>
+                            <text x="400" y="250" text-anchor="middle" fill="#333" font-size="18" font-weight="bold">YOLOv5部署全流程</text>
+                        </svg>
+                    </div>
+                    <ol>
+                        <li><span class="step-number">1</span> PyTorch模型导出与验证</li>
+                        <li><span class="step-number">2</span> ONNX格式转换与简化</li>
+                        <li><span class="step-number">3</span> TensorRT引擎构建与优化</li>
+                        <li><span class="step-number">4</span> 推理代码编写与性能测试</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9.4,10.5L4.8,15.7L13.6,15.7L10.4,10.5L9.4,10.5Z M10,4L22,20H2L10,4Z M15,10L20,16H10L15,10Z"/>
+                </svg>
+                步骤一：PyTorch模型导出
+            </h2>
+            <p>首先确保你有一个训练好的YOLOv5模型（.pt文件）。YOLOv5官方仓库提供了完善的导出脚本。</p>
+            <h3>核心代码示例：</h3>
+<pre><code>import torch
+
+# 加载训练好的模型
+model = torch.hub.load('ultralytics/yolov5', 
+                       'custom', 
+                       path='yolov5s.pt',
+                       force_reload=True)
+
+# 设置为评估模式
+model.eval()
+
+# 示例输入张量 (batch, channel, height, width)
+dummy_input = torch.randn(1, 3, 640, 640)
+
+# 模型前向测试
+with torch.no_grad():
+    output = model(dummy_input)
+    print(f"输出形状: {output.shape}")
+    print(f"输出类型: {type(output)}")
+
+# 注意：YOLOv5的输出可能需要后处理
+# 原始输出包含 [batch, num_anchors, 85] 格式的预测</code></pre>
+            <div class="warning-box">
+                <strong>重要提示：</strong>在导出前，务必理解YOLOv5的输出格式。原始输出包含边界框坐标、置信度和类别概率，通常需要后处理（NMS）才能得到最终检测结果。
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12,18L16,14H13V6H11V14H8M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4Z"/>
+                </svg>
+                步骤二：ONNX转换与优化
+            </h2>
+            <p>ONNX（Open Neural Network Exchange）作为中间表示，是连接训练框架与推理引擎的桥梁。</p>
+            
+            <h3>转换命令与参数解析：</h3>
+<pre><code># 使用YOLOv5自带的export.py脚本进行转换
+python export.py --weights yolov5s.pt \
+                 --include onnx \
+                 --img-size 640 640 \
+                 --batch-size 1 \
+                 --dynamic \
+                 --simplify \
+                 --opset 12
+
+# 参数说明：
+# --weights: 训练好的模型权重
+# --include: 导出格式，支持torchscript, onnx, engine等
+# --img-size: 输入图像尺寸
+# --batch-size: 批处理大小
+# --dynamic: 支持动态batch和尺寸
+# --simplify: 使用onnx-simplifier简化模型
+# --opset: ONNX算子集版本，推荐12或以上</code></pre>
+            
+            <h3>ONNX模型检查与可视化：</h3>
+<pre><code>import onnx
+import onnxruntime as ort
+import numpy as np
+
+# 加载并检查ONNX模型
+onnx_model = onnx.load("yolov5s.onnx")
+onnx.checker.check_model(onnx_model)
+print(f"ONNX模型输入: {[input.name for input in onnx_model.graph.input]}")
+print(f"ONNX模型输出: {[output.name for output in onnx_model.graph.output]}")
+
+# 使用ONNX Runtime进行推理测试
+ort_session = ort.InferenceSession("yolov5s.onnx")
+input_name = ort_session.get_inputs()[0].name
+
+# 准备输入数据
+test_input = np.random.randn(1, 3, 640, 640).astype(np.float32)
+
+# 运行推理
+outputs = ort_session.run(None, {input_name: test_input})
+print(f"ONNX推理输出形状: {outputs[0].shape}")</code></pre>
+            
+            <div class="tip-box">
+                <strong>优化技巧：</strong>使用 <code>onnx-simplifier</code> 可以大幅简化模型结构，移除冗余算子，提高后续TensorRT转换的成功率。
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,5A3,3 0 0,1 15,8A3,3 0 0,1 12,11A3,3 0 0,1 9,8A3,3 0 0,1 12,5M17.13,17C15.92,18.85 14.11,20.24 12,20.92C9.89,20.24 8.08,18.85 6.87,17C6.53,16.5 6.24,16 6,15.47C6,13.82 8.71,12.47 12,12.47C15.29,12.47 18,13.79 18,15.47C17.76,16 17.47,16.5 17.13,17Z"/>
+                </svg>
+                步骤三：TensorRT引擎构建
+            </h2>
+            <p>TensorRT是NVIDIA推出的高性能深度学习推理优化器和运行时引擎。</p>
+            
+            <h3>TensorRT转换方法对比：</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>方法</th>
+                        <th>优点</th>
+                        <th>缺点</th>
+                        <th>适用场景</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>trtexec命令行工具</td>
+                        <td>简单快捷，无需编码</td>
+                        <td>灵活性差，定制化困难</td>
+                        <td>快速原型验证</td>
+                    </tr>
+                    <tr>
+                        <td>Python API</td>
+                        <td>灵活性强，可精细控制</td>
+                        <td>代码复杂度高</td>
+                        <td>生产环境部署</td>
+                    </tr>
+                    <tr>
+                        <td>ONNX-TensorRT解析器</td>
+                        <td>兼容性好，支持动态Shape</td>
+                        <td>某些自定义算子支持有限</td>
+                        <td>标准模型部署</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h3>使用Python API构建引擎：</h3>
+<pre><code>import tensorrt as trt
+import pycuda.driver as cuda
+import pycuda.autoinit
+import numpy as np
+
+# 创建TensorRT记录器
+TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
+
+def build_engine(onnx_file_path, engine_file_path, fp16_mode=True):
+    builder = trt.Builder(TRT_LOGGER)
+    network = builder.create_network(1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH))
+    parser = trt.OnnxParser(network, TRT_LOGGER)
+    
+    # 解析ONNX模型
+    with open(onnx_file_path, 'rb') as model:
+        if not parser.parse(model.read()):
+            for error in range(parser.num_errors):
+                print(parser.get_error(error))
+            return None
+    
+    # 构建配置
+    config = builder.create_builder_config()
+    config.max_workspace_size = 1 << 30  # 1GB
+    
+    if fp16_mode and builder.platform_has_fast_fp16:
+        config.set_flag(trt.BuilderFlag.FP16)
+    
+    # 构建引擎
+    engine = builder.build_engine(network, config)
+    
+    # 保存引擎文件
+    with open(engine_file_path, "wb") as f:
+        f.write(engine.serialize())
+    
+    return engine
+
+# 构建FP16精度的TensorRT引擎
+engine = build_engine("yolov5s.onnx", "yolov5s_fp16.engine", fp16_mode=True)
+print("TensorRT引擎构建完成！")</code></pre>
+            
+            <h3>性能优化策略：</h3>
+            <ul>
+                <li><strong>精度选择：</strong>FP32 → FP16 → INT8，精度降低但速度提升</li>
+                <li><strong>层融合：</strong>Conv+BN+ReLU等连续层融合为单一算子</li>
+                <li><strong>内核自动调优：</strong>TensorRT自动选择最优内核实现</li>
+                <li><strong>动态Tensor内存：</strong>复用中间张量内存，减少分配开销</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z"/>
+                </svg>
+                步骤四：推理代码与性能对比
+            </h2>
+            <p>完成引擎构建后，需要编写推理代码并评估性能。</p>
+            
+            <h3>TensorRT推理代码示例：</h3>
+<pre><code>class YOLOv5TRT:
+    def __init__(self, engine_path):
+        # 加载TensorRT引擎
+        self.runtime = trt.Runtime(TRT_LOGGER)
+        with open(engine_path, "rb") as f:
+            self.engine = self.runtime.deserialize_cuda_engine(f.read())
+        
+        self.context = self.engine.create_execution_context()
+        self.inputs, self.outputs, self.bindings = [], [], []
+        self.stream = cuda.Stream()
+        
+        # 分配输入输出内存
+        for binding in self.engine:
+            size = trt.volume(self.engine.get_binding_shape(binding))
+            dtype = trt.nptype(self.engine.get_binding_dtype(binding))
+            host_mem = cuda.pagelocked_empty(size, dtype)
+            device_mem = cuda.mem_alloc(host_mem.nbytes)
+            self.bindings.append(int(device_mem))
+            
+            if self.engine.binding_is_input(binding):
+                self.inputs.append({'host': host_mem, 'device': device_mem})
+            else:
+                self.outputs.append({'host': host_mem, 'device': device_mem})
+    
+    def infer(self, input_image):
+        # 预处理图像
+        input_data = self.preprocess(input_image)
+        np.copyto(self.inputs[0]['host'], input_data.ravel())
+        
+        # 数据传输与推理
+        cuda.memcpy_htod_async(self.inputs[0]['device'], self.inputs[0]['host'], self.stream)
+        self.context.execute_async_v2(bindings=self.bindings, stream_handle=self.stream.handle)
+        cuda.memcpy_dtoh_async(self.outputs[0]['host'], self.outputs[0]['device'], self.stream)
+        self.stream.synchronize()
+        
+        # 后处理
+        detections = self.postprocess(self.outputs[0]['host'])
+        return detections
+    
+    def preprocess(self, image):
+        # 实现图像预处理：resize, normalize, BGR2RGB等
+        pass
+    
+    def postprocess(self, output):
+        # 实现后处理：解码边界框，NMS过滤
+        pass</code></pre>
+            
+            <h3>性能对比表格：</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>部署方式</th>
+                        <th>推理时间 (ms)</th>
+                        <th>内存占用 (MB)</th>
+                        <th>mAP@0.5</th>
+                        <th>适用硬件</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>PyTorch (FP32)</td>
+                        <td>45.2</td>
+                        <td>1250</td>
+                        <td>56.8%</td>
+                        <td>GPU/CPU</td>
+                    </tr>
+                    <tr>
+                        <td>ONNX Runtime (FP32)</td>
+                        <td>32.7</td>
+                        <td>980</td>
+                        <td>56.8%</td>
+                        <td>多平台</td>
+                    </tr>
+                    <tr>
+                        <td>TensorRT (FP16)</td>
+                        <td>12.3</td>
+                        <td>650</td>
+                        <td>56.5%</td>
+                        <td>NVIDIA GPU</td>
+                    </tr>
+                    <tr>
+                        <td>TensorRT (INT8)</td>
+                        <td>8.1</td>
+                        <td>420</td>
+                        <td>55.2%</td>
+                        <td>NVIDIA GPU</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div class="tip-box">
+                <strong>性能测试建议：</strong>使用固定批处理大小、预热推理、多次测量取平均值，并在实际部署硬件上进行测试，以获得准确的性能数据。
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.22,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.22,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/>
+                </svg>
+                常见问题与解决方案
+            </h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>问题</th>
+                        <th>可能原因</th>
+                        <th>解决方案</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>ONNX转换失败</td>
+                        <td>不支持的PyTorch算子</td>
+                        <td>使用自定义算子实现或修改模型结构，确保使用ONNX支持的算子</td>
+                    </tr>
+                    <tr>
+                        <td>TensorRT构建失败</td>
+                        <td>动态Shape配置错误</td>
+                        <td>明确设置最小/最优/最大尺寸，确保覆盖实际推理场景</td>
+                    </tr>
+                    <tr>
+                        <td>推理精度下降明显</td>
+                        <td>FP16/INT8量化误差</td>
+                        <td>使用校准集进行精细量化，或混合精度策略</td>
+                    </tr>
+                    <tr>
+                        <td>推理速度不达预期</td>
+                        <td>内存拷贝开销大</td>
+                        <td>使用异步推理、流水线处理，减少主机-设备数据传输</td>
+                    </tr>
+                    <tr>
+                        <td>多batch推理效率低</td>
+                        <td>引擎未优化多batch</td>
+                        <td>构建时指定多batch配置，使用动态batch优化</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h3>最佳实践总结：</h3>
+            <ol>
+                <li><strong>模型简化先行：</strong>在转换前尽量简化模型结构，移除不必要的操作</li>
+                <li><strong>渐进式优化：</strong>先确保FP32正确性，再尝试FP16，最后考虑INT8量化</li>
+                <li><strong>全面验证：</strong>不仅验证精度，还要验证边界情况和异常输入</li>
+                <li><strong>文档记录：</strong>详细记录每个步骤的参数和结果，便于问题排查</li>
+                <li><strong>版本管理：</strong>固定PyTorch、ONNX、TensorRT的版本组合，避免兼容性问题</li>
+            </ol>
+        </div>
+    </div>
+
+    <footer>
+        蓝海资料掘金营
+    </footer>
+</body>
+</html>

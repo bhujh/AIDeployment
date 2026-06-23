@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyTorch模型部署实战：模型部署测试</title>
+    <style>
+        :root {
+            --primary-blue: #4A90E2; /* 天蓝 */
+            --primary-green: #7ED321; /* 嫩绿 */
+            --primary-yellow: #F8E71C; /* 明黄 */
+            --primary-orange: #F5A623; /* 橘色 */
+            --primary-red: #D0021B; /* 正红 */
+            --light-bg: #F0F7FF; /* 浅蓝背景 */
+            --card-bg: #FFFFFF;
+            --text-dark: #333333;
+            --text-light: #666666;
+            --shadow: rgba(74, 144, 226, 0.15);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background-color: var(--light-bg);
+            color: var(--text-dark);
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-green));
+            color: white;
+            border-radius: 20px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 30px var(--shadow);
+        }
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .subtitle {
+            font-size: 1.3rem;
+            opacity: 0.9;
+        }
+        main {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+        }
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 18px;
+            padding: 30px;
+            box-shadow: 0 8px 25px var(--shadow);
+            border-top: 8px solid var(--primary-blue);
+            transition: transform 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-10px);
+        }
+        .card:nth-child(2) { border-top-color: var(--primary-green); }
+        .card:nth-child(3) { border-top-color: var(--primary-orange); }
+        .card:nth-child(4) { border-top-color: var(--primary-red); }
+        h2 {
+            color: var(--primary-blue);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid currentColor;
+            display: inline-block;
+        }
+        .card:nth-child(2) h2 { color: var(--primary-green); }
+        .card:nth-child(3) h2 { color: var(--primary-orange); }
+        .card:nth-child(4) h2 { color: var(--primary-red); }
+        ul, ol {
+            padding-left: 25px;
+            margin: 15px 0;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px var(--shadow);
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background-color: var(--primary-blue);
+            color: white;
+            font-weight: 600;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        pre {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-size: 0.95rem;
+            border-left: 5px solid var(--primary-green);
+        }
+        code {
+            font-family: 'Courier New', monospace;
+        }
+        .svg-container {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px var(--shadow);
+        }
+        .architecture-title {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: var(--primary-blue);
+        }
+        footer {
+            text-align: center;
+            padding: 30px;
+            margin-top: 40px;
+            color: var(--text-light);
+            border-top: 2px dashed var(--primary-yellow);
+            font-size: 1.1rem;
+        }
+        .footer-text {
+            color: var(--primary-blue);
+            font-weight: bold;
+            font-size: 1.3rem;
+            letter-spacing: 2px;
+        }
+        .highlight {
+            background-color: rgba(122, 211, 33, 0.15);
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>PyTorch模型部署实战</h1>
+        <p class="subtitle">第19讲：模型部署测试 —— 单元测试、集成测试、精度测试、性能回归测试</p>
+    </header>
+
+    <main>
+        <section class="card">
+            <h2>1. 单元测试 (Unit Testing)</h2>
+            <p>针对部署流程中<strong>最小可测试单元</strong>的验证，确保每个组件功能正确。</p>
+            <ul>
+                <li><span class="highlight">测试对象</span>：单个函数、类、算子（如Conv2D）、模型转换脚本。</li>
+                <li><span class="highlight">测试重点</span>：输入/输出形状、数据类型、数值范围、边界条件。</li>
+                <li><span class="highlight">常用工具</span>：Python的<code>unittest</code>、<code>pytest</code>。</li>
+            </ul>
+            <pre><code># 示例：使用pytest测试ONNX模型加载
+import onnxruntime as ort
+import numpy as np
+import pytest
+
+def test_onnx_model_load():
+    """测试ONNX模型能否正确加载并运行"""
+    sess = ort.InferenceSession("model.onnx")
+    input_name = sess.get_inputs()[0].name
+    # 构造模拟输入
+    dummy_input = np.random.randn(1, 3, 224, 224).astype(np.float32)
+    # 执行推理
+    outputs = sess.run(None, {input_name: dummy_input})
+    # 断言输出形状符合预期
+    assert outputs[0].shape == (1, 1000)
+    print("✓ ONNX模型单元测试通过")
+
+if __name__ == "__main__":
+    test_onnx_model_load()</code></pre>
+        </section>
+
+        <section class="card">
+            <h2>2. 集成测试 (Integration Testing)</h2>
+            <p>验证多个组件组合后的协同工作能力，关注数据流和接口兼容性。</p>
+            <ol>
+                <li><strong>模型转换流水线</strong>：PyTorch → ONNX → TensorRT 全链路。</li>
+                <li><strong>前后端集成</strong>：推理引擎与业务API（如Flask、gRPC）的对接。</li>
+                <li><strong>多硬件支持</strong>：同一模型在GPU、CPU、边缘设备上的行为一致性。</li>
+            </ol>
+            <div class="svg-container">
+                <div class="architecture-title">模型部署集成测试架构图</div>
+                <svg width="100%" height="220" viewBox="0 0 600 220" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="20" y="80" width="120" height="60" rx="10" fill="var(--primary-blue)" opacity="0.8"/>
+                    <text x="80" y="115" text-anchor="middle" fill="white" font-weight="bold">PyTorch模型</text>
+                    <path d="M140 110 H180" stroke="var(--primary-green)" stroke-width="3" marker-end="url(#arrow)"/>
+                    <rect x="180" y="80" width="120" height="60" rx="10" fill="var(--primary-green)" opacity="0.8"/>
+                    <text x="240" y="115" text-anchor="middle" fill="white" font-weight="bold">ONNX转换</text>
+                    <path d="M300 110 H340" stroke="var(--primary-orange)" stroke-width="3" marker-end="url(#arrow)"/>
+                    <rect x="340" y="80" width="120" height="60" rx="10" fill="var(--primary-orange)" opacity="0.8"/>
+                    <text x="400" y="115" text-anchor="middle" fill="white" font-weight="bold">TensorRT引擎</text>
+                    <path d="M460 110 H500" stroke="var(--primary-red)" stroke-width="3" marker-end="url(#arrow)"/>
+                    <rect x="500" y="80" width="120" height="60" rx="10" fill="var(--primary-red)" opacity="0.8"/>
+                    <text x="560" y="115" text-anchor="middle" fill="white" font-weight="bold">推理服务</text>
+                    <defs>
+                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" fill="var(--primary-green)"/>
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>3. 精度测试 (Accuracy Testing)</h2>
+            <p>确保部署后的模型与原始模型在预测精度上保持一致，是部署成功的核心。</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>测试阶段</th>
+                        <th>评估指标</th>
+                        <th>允许误差</th>
+                        <th>工具/方法</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>原始模型 (PyTorch)</td>
+                        <td>Top-1 Accuracy, mAP, F1-Score</td>
+                        <td>基准值</td>
+                        <td>TorchMetrics, sklearn</td>
+                    </tr>
+                    <tr>
+                        <td>中间格式 (ONNX)</td>
+                        <td>输出张量绝对误差 (MAE)</td>
+                        <td>≤ 1e-5</td>
+                        <td>NumPy, ONNX Runtime</td>
+                    </tr>
+                    <tr>
+                        <td>优化引擎 (TensorRT)</td>
+                        <td>FP32/FP16/INT8 精度损失</td>
+                        <td>≤ 0.5% (相对)</td>
+                        <td>Polygraphy, TRT APIs</td>
+                    </tr>
+                </tbody>
+            </table>
+            <pre><code># 示例：对比PyTorch与TensorRT引擎的输出精度
+import torch
+import tensorrt as trt
+import numpy as np
+
+def calculate_accuracy_diff(pytorch_output, tensorrt_output):
+    """计算两种引擎输出的精度差异"""
+    # 转换为numpy数组
+    pt_np = pytorch_output.cpu().numpy() if torch.is_tensor(pytorch_output) else pytorch_output
+    trt_np = tensorrt_output
+    # 计算最大绝对误差和平均绝对误差
+    max_abs_error = np.max(np.abs(pt_np - trt_np))
+    mean_abs_error = np.mean(np.abs(pt_np - trt_np))
+    # 计算相对误差（百分比）
+    relative_error = np.mean(np.abs((pt_np - trt_np) / (pt_np + 1e-8))) * 100
+    return {
+        "max_abs_error": max_abs_error,
+        "mean_abs_error": mean_abs_error,
+        "relative_error_%": relative_error
+    }
+
+# 假设已有pt_output和trt_output
+diff = calculate_accuracy_diff(pt_output, trt_output)
+print(f"精度差异: {diff}")</code></pre>
+        </section>
+
+        <section class="card">
+            <h2>4. 性能回归测试 (Performance Regression Testing)</h2>
+            <p>监控部署模型在<span class="highlight">延迟 (Latency)</span>、<span class="highlight">吞吐量 (Throughput)</span> 和 <span class="highlight">资源消耗</span> 上的变化，防止优化引入性能倒退。</p>
+            <ul>
+                <li><strong>关键性能指标 (KPIs)</strong>：
+                    <ul>
+                        <li><strong>延迟</strong>：单次推理时间（毫秒，ms）。</li>
+                        <li><strong>吞吐量</strong>：每秒处理的样本数（样本/秒）。</li>
+                        <li><strong>GPU内存</strong>：峰值显存占用（MB）。</li>
+                        <li><strong>CPU利用率</strong>：推理期间的平均CPU使用率（%）。</li>
+                    </ul>
+                </li>
+                <li><strong>测试策略</strong>：
+                    <ol>
+                        <li><strong>基线测试</strong>：记录原始模型性能作为基准。</li>
+                        <li><strong>自动化脚本</strong>：每次代码提交后自动运行性能测试。</li>
+                        <li><strong>阈值报警</strong>：设置性能下降红线（如延迟增加 > 10%）。</li>
+                    </ol>
+                </li>
+            </ul>
+            <pre><code># 示例：使用Python进行简单的性能基准测试
+import time
+import statistics
+
+def benchmark_model(session, input_data, warmup=10, runs=100):
+    """基准测试函数：测量模型的平均延迟和吞吐量"""
+    # 预热
+    for _ in range(warmup):
+        _ = session.run(None, input_data)
+    
+    latencies = []
+    for _ in range(runs):
+        start = time.perf_counter()
+        _ = session.run(None, input_data)
+        end = time.perf_counter()
+        latencies.append((end - start) * 1000)  # 转换为毫秒
+    
+    avg_latency = statistics.mean(latencies)
+    throughput = 1000 / avg_latency  # 每秒处理样本数
+    p95_latency = np.percentile(latencies, 95)
+    
+    return {
+        "平均延迟 (ms)": round(avg_latency, 2),
+        "P95延迟 (ms)": round(p95_latency, 2),
+        "吞吐量 (样本/秒)": round(throughput, 1)
+    }
+
+# 使用示例
+results = benchmark_model(ort_session, {"input": dummy_data})
+print("性能测试结果:", results)</code></pre>
+        </section>
+    </main>
+
+    <div class="svg-container">
+        <div class="architecture-title">模型部署测试全流程总结</div>
+        <svg width="100%" height="280" viewBox="0 0 650 280" xmlns="http://www.w3.org/2000/svg">
+            <rect x="50" y="30" width="140" height="60" rx="15" fill="var(--primary-blue)" opacity="0.9"/>
+            <text x="120" y="65" text-anchor="middle" fill="white" font-weight="bold">单元测试</text>
+            <text x="120" y="85" text-anchor="middle" fill="white" font-size="0.9em">验证组件</text>
+            <path d="M190 60 Q215 60 225 90" stroke="var(--primary-green)" stroke-width="2" fill="none" marker-end="url(#arrow2)"/>
+            <rect x="230" y="90" width="140" height="60" rx="15" fill="var(--primary-green)" opacity="0.9"/>
+            <text x="300" y="125" text-anchor="middle" fill="white" font-weight="bold">集成测试</text>
+            <text x="300" y="145" text-anchor="middle" fill="white" font-size="0.9em">验证链路</text>
+            <path d="M370 120 Q395 120 405 150" stroke="var(--primary-orange)" stroke-width="2" fill="none" marker-end="url(#arrow2)"/>
+            <rect x="410" y="150" width="140" height="60" rx="15" fill="var(--primary-orange)" opacity="0.9"/>
+            <text x="480" y="185" text-anchor="middle" fill="white" font-weight="bold">精度测试</text>
+            <text x="480" y="205" text-anchor="middle" fill="white" font-size="0.9em">验证输出</text>
+            <path d="M550 180 Q575 180 585 210" stroke="var(--primary-red)" stroke-width="2" fill="none" marker-end="url(#arrow2)"/>
+            <rect x="50" y="210" width="140" height="60" rx="15" fill="var(--primary-red)" opacity="0.9"/>
+            <text x="120" y="245" text-anchor="middle" fill="white" font-weight="bold">性能测试</text>
+            <text x="120" y="265" text-anchor="middle" fill="white" font-size="0.9em">验证效率</text>
+            <path d="M190 240 Q215 240 225 210" stroke="var(--primary-blue)" stroke-width="2" fill="none" marker-end="url(#arrow2)"/>
+            <rect x="230" y="210" width="140" height="60" rx="15" fill="#8B4CE2" opacity="0.9"/>
+            <text x="300" y="245" text-anchor="middle" fill="white" font-weight="bold">回归测试</text>
+            <text x="300" y="265" text-anchor="middle" fill="white" font-size="0.9em">监控变化</text>
+            <path d="M370 240 Q395 240 405 180" stroke="var(--primary-orange)" stroke-width="2" fill="none" marker-end="url(#arrow2)"/>
+            <defs>
+                <marker id="arrow2" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto" markerUnits="strokeWidth">
+                    <path d="M0,0 L8,4 L0,8 z" fill="var(--primary-green)"/>
+                </marker>
+            </defs>
+        </svg>
+        <p style="margin-top:15px; color: var(--text-light);">测试流程是迭代且循环的，确保部署的模型<strong>正确、高效、稳定</strong>。</p>
+    </div>
+
+    <footer>
+        <p>课程内容总结与制作</p>
+        <p class="footer-text">蓝海资料掘金营</p>
+        <p style="margin-top:10px; font-size:0.9em;">深度学习部署专家 · UI专家 · Markdown专家 联合呈现</p>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyTorch模型部署实战：多模型流水线部署</title>
+    <style>
+        :root {
+            --primary-blue: #4A90E2;
+            --secondary-green: #7ED321;
+            --accent-yellow: #F8E71C;
+            --accent-orange: #F5A623;
+            --accent-red: #D0021B;
+            --light-bg: #F0F7FF;
+            --card-bg: #FFFFFF;
+            --text-dark: #333333;
+            --text-light: #666666;
+            --shadow: rgba(100, 100, 111, 0.2) 0px 7px 29px 0px;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background-color: var(--light-bg);
+            color: var(--text-dark);
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, var(--primary-blue), var(--secondary-green));
+            color: white;
+            border-radius: 20px;
+            margin-bottom: 40px;
+            box-shadow: var(--shadow);
+        }
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        main {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+        }
+        section {
+            background-color: var(--card-bg);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: var(--shadow);
+            border-top: 8px solid var(--accent-yellow);
+        }
+        h2 {
+            color: var(--primary-blue);
+            border-bottom: 3px solid var(--accent-orange);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+        h3 {
+            color: var(--secondary-green);
+            margin: 15px 0 10px;
+        }
+        p {
+            margin-bottom: 15px;
+            color: var(--text-light);
+        }
+        ul, ol {
+            padding-left: 25px;
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background-color: var(--primary-blue);
+            color: white;
+            font-weight: 600;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .code-block {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        .architecture-container {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+        }
+        svg {
+            max-width: 100%;
+            height: auto;
+        }
+        .highlight {
+            background-color: rgba(122, 211, 33, 0.1);
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            color: var(--secondary-green);
+        }
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 25px;
+            color: var(--text-light);
+            font-size: 1.1rem;
+            border-top: 2px dashed var(--primary-blue);
+        }
+        .footer-text {
+            font-weight: bold;
+            color: var(--primary-blue);
+            font-size: 1.3rem;
+        }
+        .note {
+            background-color: #FFF9E6;
+            border-left: 5px solid var(--accent-yellow);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>PyTorch模型部署实战</h1>
+        <p class="subtitle">第17讲：多模型流水线部署 —— 多个Engine协同、流水线并行、数据依赖管理</p>
+    </header>
+
+    <main>
+        <section>
+            <h2>📚 核心概念</h2>
+            <p>在复杂的AI应用场景中，单一模型往往无法满足需求。我们需要将多个模型组合成一个<strong>推理流水线（Pipeline）</strong>，让它们协同工作，实现端到端的智能处理。</p>
+            <ul>
+                <li><span class="highlight">多个Engine协同</span>：不同模型可能运行在不同的推理引擎（TensorRT, ONNX Runtime等）上，需要统一调度。</li>
+                <li><span class="highlight">流水线并行</span>：将处理流程划分为多个阶段，不同阶段可以并行执行，提高吞吐量。</li>
+                <li><span class="highlight">数据依赖管理</span>：管理模型间的输入输出依赖，确保数据正确、高效地传递。</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>🏗️ 系统架构图</h2>
+            <p>一个典型的多模型流水线部署架构包含以下组件：</p>
+            <div class="architecture-container">
+                <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="50" y="150" width="120" height="60" rx="10" fill="#4A90E2" stroke="#333" stroke-width="2"/>
+                    <text x="110" y="185" text-anchor="middle" fill="white" font-weight="bold">输入数据</text>
+                    <polygon points="190,180 230,180 210,160" fill="#F5A623"/>
+                    <rect x="250" y="50" width="120" height="60" rx="10" fill="#7ED321" stroke="#333" stroke-width="2"/>
+                    <text x="310" y="85" text-anchor="middle" fill="white" font-weight="bold">模型A</text>
+                    <text x="310" y="105" text-anchor="middle" fill="white" font-size="12">(TensorRT)</text>
+                    <rect x="250" y="150" width="120" height="60" rx="10" fill="#7ED321" stroke="#333" stroke-width="2"/>
+                    <text x="310" y="185" text-anchor="middle" fill="white" font-weight="bold">模型B</text>
+                    <text x="310" y="205" text-anchor="middle" fill="white" font-size="12">(ONNX Runtime)</text>
+                    <rect x="250" y="250" width="120" height="60" rx="10" fill="#7ED321" stroke="#333" stroke-width="2"/>
+                    <text x="310" y="285" text-anchor="middle" fill="white" font-weight="bold">模型C</text>
+                    <text x="310" y="305" text-anchor="middle" fill="white" font-size="12">(PyTorch)</text>
+                    <polygon points="430,180 470,180 450,160" fill="#F5A623"/>
+                    <rect x="490" y="100" width="120" height="60" rx="10" fill="#F8E71C" stroke="#333" stroke-width="2"/>
+                    <text x="550" y="135" text-anchor="middle" fill="#333" font-weight="bold">数据融合</text>
+                    <polygon points="630,130 670,130 650,110" fill="#F5A623"/>
+                    <rect x="690" y="150" width="120" height="60" rx="10" fill="#D0021B" stroke="#333" stroke-width="2"/>
+                    <text x="750" y="185" text-anchor="middle" fill="white" font-weight="bold">输出结果</text>
+                    <line x1="170" y1="180" x2="190" y2="180" stroke="#333" stroke-width="2"/>
+                    <line x1="230" y1="180" x2="250" y2="80" stroke="#333" stroke-width="2" stroke-dasharray="5,5"/>
+                    <line x1="230" y1="180" x2="250" y2="180" stroke="#333" stroke-width="2"/>
+                    <line x1="230" y1="180" x2="250" y2="280" stroke="#333" stroke-width="2" stroke-dasharray="5,5"/>
+                    <line x1="370" y1="80" x2="430" y2="180" stroke="#333" stroke-width="2" stroke-dasharray="5,5"/>
+                    <line x1="370" y1="180" x2="430" y2="180" stroke="#333" stroke-width="2"/>
+                    <line x1="370" y1="280" x2="430" y2="180" stroke="#333" stroke-width="2" stroke-dasharray="5,5"/>
+                    <line x1="470" y1="180" x2="490" y2="130" stroke="#333" stroke-width="2"/>
+                    <line x1="610" y1="130" x2="630" y2="130" stroke="#333" stroke-width="2"/>
+                    <line x1="670" y1="130" x2="690" y2="180" stroke="#333" stroke-width="2"/>
+                    <text x="210" y="40" fill="#333" font-size="14">并行执行</text>
+                    <ellipse cx="210" cy="30" rx="50" ry="15" fill="#FFF9E6" stroke="#F5A623"/>
+                </svg>
+            </div>
+            <p class="note">💡 架构说明：输入数据被同时分发给三个并行运行的模型引擎，结果经融合模块处理后输出。虚线表示数据依赖的可选路径。</p>
+        </section>
+
+        <section>
+            <h2>⚙️ 关键技术实现</h2>
+            <h3>1. 多个Engine的加载与协同</h3>
+            <p>使用统一的接口管理不同后端的推理引擎。</p>
+            <div class="code-block">
+<pre><code>import tensorrt as trt
+import onnxruntime as ort
+import torch
+
+class MultiEnginePipeline:
+    def __init__(self):
+        self.engines = {}
+
+    def load_tensorrt_engine(self, name, engine_path):
+        with open(engine_path, 'rb') as f:
+            runtime = trt.Runtime(trt.Logger(trt.Logger.WARNING))
+            engine = runtime.deserialize_cuda_engine(f.read())
+        self.engines[name] = {'type': 'tensorrt', 'engine': engine}
+
+    def load_onnx_engine(self, name, onnx_path):
+        sess = ort.InferenceSession(onnx_path)
+        self.engines[name] = {'type': 'onnx', 'session': sess}
+
+    def run(self, engine_name, input_data):
+        engine_info = self.engines[engine_name]
+        if engine_info['type'] == 'tensorrt':
+            return self._run_tensorrt(engine_info['engine'], input_data)
+        elif engine_info['type'] == 'onnx':
+            return self._run_onnx(engine_info['session'], input_data)</code></pre>
+            </div>
+
+            <h3>2. 流水线并行与数据依赖</h3>
+            <p>使用有向无环图（DAG）描述模型间的依赖关系，并利用线程池实现并行。</p>
+            <div class="code-block">
+<pre><code>from concurrent.futures import ThreadPoolExecutor
+import networkx as nx
+
+class InferencePipeline:
+    def __init__(self, max_workers=4):
+        self.graph = nx.DiGraph()
+        self.executor = ThreadPoolExecutor(max_workers=max_workers)
+
+    def add_node(self, name, engine, inputs, outputs):
+        self.graph.add_node(name, engine=engine,
+                            inputs=inputs, outputs=outputs)
+
+    def add_dependency(self, src, dst, data_key):
+        self.graph.add_edge(src, dst, data_key=data_key)
+
+    async def run_async(self, initial_data):
+        results = {**initial_data}
+        # 拓扑排序确定执行顺序
+        order = list(nx.topological_sort(self.graph))
+        for node_name in order:
+            node = self.graph.nodes[node_name]
+            # 收集所需输入
+            input_data = {key: results[key] for key in node['inputs']}
+            # 提交异步任务
+            future = self.executor.submit(node['engine'].run, input_data)
+            node_output = await future
+            results.update(node_output)
+        return results</code></pre>
+            </div>
+        </section>
+
+        <section>
+            <h2>📊 部署策略对比</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>策略</th>
+                        <th>优点</th>
+                        <th>缺点</th>
+                        <th>适用场景</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>同步串行</strong></td>
+                        <td>实现简单，数据流清晰</td>
+                        <td>延迟高，资源利用率低</td>
+                        <td>模型间强依赖，数据量小</td>
+                    </tr>
+                    <tr>
+                        <td><strong>流水线并行</strong></td>
+                        <td>高吞吐，资源利用率高</td>
+                        <td>实现复杂，需要缓冲管理</td>
+                        <td>处理流式数据，多批次输入</td>
+                    </tr>
+                    <tr>
+                        <td><strong>数据并行</strong></td>
+                        <td>加速单模型处理</td>
+                        <td>内存消耗大，同步开销</td>
+                        <td>单模型计算密集，输入可分割</td>
+                    </tr>
+                    <tr>
+                        <td><strong>混合并行</strong></td>
+                        <td>灵活，性能潜力大</td>
+                        <td>调试困难，负载均衡难</td>
+                        <td>复杂异构系统，生产环境</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section>
+            <h2>✅ 最佳实践清单</h2>
+            <ol>
+                <li><strong> profiling 先行</strong>：使用Nsight Systems/Tools分析每个模型和传输的耗时。</li>
+                <li><strong>统一数据格式</strong>：在流水线内部使用标准张量格式（如FP16 NHWC），减少转换开销。</li>
+                <li><strong>异步与重叠</strong>：使用CUDA Stream、异步传输和计算重叠隐藏数据搬运时间。</li>
+                <li><strong>动态批处理</strong>：根据模型特性和输入尺寸，实现动态批处理以最大化吞吐。</li>
+                <li><strong>优雅降级</strong>：设计备选路径，当某个引擎失败时能跳过或使用简化模型。</li>
+                <li><strong>监控与日志</strong>：对每个阶段的耗时、内存使用进行监控，便于性能调优和问题排查。</li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>🎯 总结</h2>
+            <p>多模型流水线部署是工业级AI应用的核心技术。它要求开发者不仅理解单个模型的优化，更要掌握<strong>系统级</strong>的思维，包括任务调度、数据流设计、资源管理和性能分析。</p>
+            <p>通过结合<strong>ONNX的互操作性</strong>和<strong>TensorRT的高性能推理</strong，并辅以合理的并行策略，我们可以构建出既高效又灵活的智能推理系统，应对真实场景中复杂多变的挑战。</p>
+            <div class="note">
+                <p><strong>关键收获</strong>：流水线的性能瓶颈往往不在计算，而在数据搬运和依赖等待。良好的设计应致力于减少数据拷贝、最大化并行度、平衡各阶段负载。</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>课程内容精心制作，理论与实践并重</p>
+        <p class="footer-text">蓝海资料掘金营</p>
+        <p>探索技术深海，挖掘知识宝藏</p>
+    </footer>
+</body>
+</html>

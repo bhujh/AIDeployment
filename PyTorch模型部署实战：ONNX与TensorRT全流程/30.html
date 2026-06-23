@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyTorch模型部署实战：课程总结与进阶</title>
+    <style>
+        :root {
+            --primary: #4CAF50; /* 青草绿 */
+            --secondary: #2196F3; /* 天空蓝 */
+            --accent: #FF9800; /* 活力橙 */
+            --light: #FFF9C4; /* 淡鹅黄 */
+            --dark: #333333;
+            --text: #424242;
+            --background: #F5F5F5;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background-color: var(--background);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border-radius: 20px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        main {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+        }
+        section {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border-top: 8px solid var(--accent);
+        }
+        h2 {
+            color: var(--secondary);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px dashed var(--light);
+        }
+        h3 {
+            color: var(--primary);
+            margin: 15px 0 10px;
+        }
+        ul, ol {
+            padding-left: 25px;
+            margin-bottom: 15px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        th {
+            background-color: var(--light);
+            color: var(--dark);
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 15px;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 15px 0;
+            border-left: 5px solid var(--primary);
+            font-family: 'Courier New', monospace;
+        }
+        code {
+            background-color: #eee;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+        .svg-container {
+            text-align: center;
+            margin: 25px 0;
+        }
+        svg {
+            max-width: 100%;
+            height: auto;
+        }
+        footer {
+            text-align: center;
+            padding: 30px;
+            margin-top: 40px;
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            color: white;
+            border-radius: 20px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+        .highlight {
+            background-color: var(--light);
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .tip {
+            background-color: #E3F2FD;
+            border-left: 5px solid var(--secondary);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 10px 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>PyTorch模型部署实战</h1>
+        <p class="subtitle">第30讲：课程总结与进阶 —— 技术趋势展望、扩展学习资源、社区与最佳实践</p>
+    </header>
+
+    <main>
+        <section>
+            <h2>📈 技术趋势展望</h2>
+            <p>模型部署领域正在快速演进，以下是我们需要关注的核心趋势：</p>
+            <ul>
+                <li><span class="highlight">大模型轻量化部署</span>：模型压缩、蒸馏、量化技术持续突破，让百亿参数模型在边缘设备运行成为可能。</li>
+                <li><span class="highlight">硬件与软件协同设计</span>：专用AI芯片（NPU/TPU）与框架（TensorRT, OpenVINO）深度集成。</li>
+                <li><span class="highlight">端云协同推理</span>：动态分配计算任务，实现延迟、精度与成本的平衡。</li>
+                <li><span class="highlight">编译式部署框架崛起</span>：TVM、MLIR、IREE等编译器技术提供跨平台高性能解决方案。</li>
+                <li><span class="highlight">实时自适应优化</span>：部署后模型可根据输入数据分布动态调整计算图。</li>
+            </ul>
+
+            <div class="svg-container">
+                <svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="50" y="30" width="300" height="140" rx="10" fill="#E8F5E9" stroke="#4CAF50" stroke-width="2"/>
+                    <text x="200" y="60" text-anchor="middle" font-size="16" fill="#2E7D32">部署技术演进路径</text>
+                    <circle cx="100" cy="110" r="15" fill="#2196F3"/>
+                    <text x="100" y="115" text-anchor="middle" fill="white" font-size="12">ONNX</text>
+                    <circle cx="200" cy="110" r="15" fill="#FF9800"/>
+                    <text x="200" y="115" text-anchor="middle" fill="white" font-size="12">TensorRT</text>
+                    <circle cx="300" cy="110" r="15" fill="#9C27B0"/>
+                    <text x="300" y="115" text-anchor="middle" fill="white" font-size="12">TVM</text>
+                    <path d="M115 110 L185 110 M215 110 L285 110" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+                    <defs>
+                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" fill="#333"/>
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+        </section>
+
+        <section>
+            <h2>📚 扩展学习资源</h2>
+            <h3>官方文档与教程</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>资源名称</th>
+                        <th>重点内容</th>
+                        <th>难度</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>PyTorch TorchScript</td>
+                        <td>模型序列化、追踪与脚本化</td>
+                        <td>中级</td>
+                    </tr>
+                    <tr>
+                        <td>ONNX Runtime 官方文档</td>
+                        <td>多后端执行、性能调优</td>
+                        <td>中级</td>
+                    </tr>
+                    <tr>
+                        <td>TensorRT 开发者指南</td>
+                        <td>层融合、精度校准、动态形状</td>
+                        <td>高级</td>
+                    </tr>
+                    <tr>
+                        <td>TVM 编译栈教程</td>
+                        <td>Relay IR、AutoTVM、VTA</td>
+                        <td>高级</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>推荐书籍与论文</h3>
+            <ul>
+                <li><strong>《深入理解TensorRT》</strong> – 详细剖析内核优化原理</li>
+                <li><strong>《ONNX标准与生态》</strong> – 解读中间表示与算子集</li>
+                <li><strong>论文《MLIR: A Compiler Infrastructure for the End of Moore's Law》</strong> – 了解下一代编译器框架</li>
+                <li><strong>《边缘AI部署实战》</strong> – 涵盖移动端与IoT场景</li>
+            </ul>
+
+            <div class="tip">
+                💡 实践建议：从官方示例代码开始，逐步修改以适应自己的模型，并参与开源项目贡献。
+            </div>
+        </section>
+
+        <section>
+            <h2>🤝 社区与最佳实践</h2>
+            <h3>活跃社区推荐</h3>
+            <ol>
+                <li><strong>PyTorch Forums</strong> – 部署相关板块有大量实战问答</li>
+                <li><strong>ONNX GitHub Issues</strong> – 跟踪算子支持与转换问题</li>
+                <li><strong>NVIDIA Developer Forums</strong> – TensorRT性能优化讨论</li>
+                <li><strong>国内技术社区</strong> – 知乎、掘金上的专栏与实战分享</li>
+            </ol>
+
+            <h3>部署最佳实践清单</h3>
+            <ul>
+                <li><strong>预处理/后处理集成</strong>：尽量将前后处理纳入计算图，减少数据拷贝。</li>
+                <li><strong>动态形状支持</strong>：使用TensorRT的profile策略或ONNX Runtime的shape inference。</li>
+                <li><strong>多精度部署</strong>：根据场景混合使用FP32/FP16/INT8。</li>
+                <li><strong>流水线并行</strong>：使用CUDA Stream实现计算与数据传输重叠。</li>
+                <li><strong>监控与日志</strong>：记录推理延迟、吞吐量、显存使用等关键指标。</li>
+            </ul>
+
+            <div class="svg-container">
+                <svg viewBox="0 0 400 250" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="50" y="30" width="300" height="180" rx="10" fill="#FFF3E0" stroke="#FF9800" stroke-width="2"/>
+                    <text x="200" y="60" text-anchor="middle" font-size="16" fill="#EF6C00">典型部署架构</text>
+                    <rect x="80" y="80" width="100" height="40" rx="5" fill="#BBDEFB" stroke="#2196F3"/>
+                    <text x="130" y="105" text-anchor="middle" font-size="12">PyTorch 训练</text>
+                    <rect x="200" y="80" width="100" height="40" rx="5" fill="#C8E6C9" stroke="#4CAF50"/>
+                    <text x="250" y="105" text-anchor="middle" font-size="12">ONNX 导出</text>
+                    <rect x="80" y="140" width="100" height="40" rx="5" fill="#FFCCBC" stroke="#FF5722"/>
+                    <text x="130" y="165" text-anchor="middle" font-size="12">TensorRT 优化</text>
+                    <rect x="200" y="140" width="100" height="40" rx="5" fill="#E1BEE7" stroke="#7B1FA2"/>
+                    <text x="250" y="165" text-anchor="middle" font-size="12">服务化部署</text>
+                    <path d="M130 120 L130 140 M180 100 L200 100 M250 120 L250 140" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrow2)"/>
+                    <defs>
+                        <marker id="arrow2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" fill="#333"/>
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+        </section>
+
+        <section>
+            <h2>💻 代码示例：简易部署流水线</h2>
+            <p>以下是一个将PyTorch模型转换为ONNX并使用ONNX Runtime推理的简化示例：</p>
+            <pre><code>import torch
+import torch.onnx
+import onnxruntime as ort
+import numpy as np
+
+# 1. 定义并训练一个简单模型
+class SimpleModel(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.linear = torch.nn.Linear(10, 5)
+        self.relu = torch.nn.ReLU()
+    
+    def forward(self, x):
+        return self.relu(self.linear(x))
+
+model = SimpleModel()
+model.eval()
+
+# 2. 导出为ONNX格式
+dummy_input = torch.randn(1, 10)
+onnx_path = "simple_model.onnx"
+torch.onnx.export(
+    model,
+    dummy_input,
+    onnx_path,
+    input_names=["input"],
+    output_names=["output"],
+    dynamic_axes={"input": {0: "batch_size"}},
+    opset_version=13
+)
+
+# 3. 使用ONNX Runtime加载并推理
+session = ort.InferenceSession(onnx_path)
+input_name = session.get_inputs()[0].name
+output_name = session.get_outputs()[0].name
+
+# 准备输入数据
+input_data = np.random.randn(2, 10).astype(np.float32)  # 批量大小为2
+outputs = session.run([output_name], {input_name: input_data})
+
+print("输入形状:", input_data.shape)
+print("输出形状:", outputs[0].shape)
+print("部署推理成功！")</code></pre>
+            <div class="tip">
+                🚀 进阶挑战：尝试在上述流程中加入TensorRT优化，比较优化前后的延迟与吞吐量差异。
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        蓝海资料掘金营
+    </footer>
+</body>
+</html>

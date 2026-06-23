@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyTorch模型部署实战：课程导论</title>
+    <style>
+        :root {
+            --primary: #4CAF50; /* 青草绿 */
+            --secondary: #2196F3; /* 天空蓝 */
+            --accent: #FF9800; /* 活力橙 */
+            --light: #FFF9C4; /* 淡鹅黄 */
+            --dark: #333333;
+            --text: #424242;
+            --background: #F5F5F5;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background-color: var(--background);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border-radius: 20px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .subtitle {
+            font-size: 1.3rem;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        main {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+        }
+        section {
+            background-color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border-left: 8px solid var(--accent);
+        }
+        h2 {
+            color: var(--secondary);
+            border-bottom: 3px solid var(--light);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+        h3 {
+            color: var(--primary);
+            margin: 15px 0 10px;
+        }
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        ul, ol {
+            padding-left: 25px;
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.05);
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background-color: var(--light);
+            color: var(--dark);
+            font-weight: 600;
+        }
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+        .card-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 5px 12px rgba(0,0,0,0.06);
+            border-top: 5px solid var(--secondary);
+            transition: transform 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .card h3 {
+            color: var(--secondary);
+        }
+        .svg-container {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background-color: #f8fdff;
+            border-radius: 12px;
+        }
+        svg {
+            max-width: 100%;
+            height: auto;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 20px;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 20px 0;
+            border-left: 5px solid var(--primary);
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        code {
+            background-color: #e8f5e9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #d32f2f;
+        }
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 25px;
+            color: var(--text);
+            font-size: 1.1rem;
+            border-top: 2px dashed var(--accent);
+        }
+        .footer-text {
+            font-weight: bold;
+            color: var(--secondary);
+            font-size: 1.3rem;
+            letter-spacing: 2px;
+        }
+        .highlight {
+            background-color: var(--light);
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        .badge {
+            display: inline-block;
+            background-color: var(--accent);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>PyTorch模型部署实战</h1>
+        <p class="subtitle">ONNX与TensorRT全流程 · 第一讲：课程导论</p>
+        <p class="subtitle">模型部署的意义与挑战、技术栈概览、课程目标与学习路径</p>
+    </header>
+
+    <main>
+        <section>
+            <h2>一、模型部署的意义与挑战</h2>
+            <p>在深度学习项目生命周期中，<span class="highlight">模型训练</span>只是第一步，将训练好的模型高效、稳定地运行在实际的硬件与环境中（即<span class="highlight">模型部署</span>），才是其产生商业与技术价值的关键。</p>
+            
+            <h3>1.1 为什么部署如此重要？</h3>
+            <ul>
+                <li><strong>价值闭环</strong>：将实验室的算法能力转化为可用的产品功能。</li>
+                <li><strong>性能要求</strong>：生产环境需要低延迟、高吞吐、7x24小时稳定运行。</li>
+                <li><strong>资源限制</strong>：边缘设备、移动端、嵌入式系统存在算力、内存、功耗的严格约束。</li>
+                <li><strong>工程化需求</strong>：需要与现有软件系统集成，支持多平台、易维护、可扩展。</li>
+            </ul>
+
+            <h3>1.2 核心挑战</h3>
+            <div class="card-container">
+                <div class="card">
+                    <h3>🔄 环境差异</h3>
+                    <p>训练框架（PyTorch/TensorFlow）与推理环境（C++/Python服务、移动端、边缘设备）的差异。</p>
+                </div>
+                <div class="card">
+                    <h3>⚡ 性能优化</h3>
+                    <p>如何利用硬件特性（GPU Tensor Cores, INT8量化）实现极致的推理速度。</p>
+                </div>
+                <div class="card">
+                    <h3>📦 模型转换</h3>
+                    <p>不同框架间模型格式的转换，保证数值精度一致性与算子兼容性。</p>
+                </div>
+                <div class="card">
+                    <h3>🔧 工程集成</h3>
+                    <p>将优化后的模型嵌入到完整的应用流水线中，处理数据预处理、后处理、并发请求等。</p>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>二、PyTorch / ONNX / TensorRT 技术栈概览</h2>
+            <p>本课程聚焦于业界主流的部署技术栈：<span class="highlight">PyTorch -> ONNX -> TensorRT</span>，实现从研究到生产的无缝衔接。</p>
+            
+            <div class="svg-container">
+                <svg viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#EE4C2C;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#EE4C2C;stop-opacity:0.8" />
+                        </linearGradient>
+                        <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#5ACF8F;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#5ACF8F;stop-opacity:0.8" />
+                        </linearGradient>
+                        <linearGradient id="grad3" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#76B900;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#76B900;stop-opacity:0.8" />
+                        </linearGradient>
+                    </defs>
+                    <!-- PyTorch -->
+                    <rect x="50" y="100" rx="15" ry="15" width="200" height="80" fill="url(#grad1)" stroke="#333" stroke-width="2"/>
+                    <text x="150" y="145" text-anchor="middle" fill="white" font-size="24" font-weight="bold">PyTorch</text>
+                    <text x="150" y="175" text-anchor="middle" fill="white" font-size="16">训练与导出</text>
+                    <!-- Arrow -->
+                    <polygon points="280,140 310,140 300,130 310,140 300,150" fill="#333"/>
+                    <line x1="280" y1="140" x2="310" y2="140" stroke="#333" stroke-width="3"/>
+                    <!-- ONNX -->
+                    <rect x="350" y="100" rx="15" ry="15" width="200" height="80" fill="url(#grad2)" stroke="#333" stroke-width="2"/>
+                    <text x="450" y="145" text-anchor="middle" fill="white" font-size="24" font-weight="bold">ONNX</text>
+                    <text x="450" y="175" text-anchor="middle" fill="white" font-size="16">开放中间格式</text>
+                    <!-- Arrow -->
+                    <polygon points="580,140 610,140 600,130 610,140 600,150" fill="#333"/>
+                    <line x1="580" y1="140" x2="610" y2="140" stroke="#333" stroke-width="3"/>
+                    <!-- TensorRT -->
+                    <rect x="650" y="100" rx="15" ry="15" width="200" height="80" fill="url(#grad3)" stroke="#333" stroke-width="2"/>
+                    <text x="750" y="145" text-anchor="middle" fill="white" font-size="24" font-weight="bold">TensorRT</text>
+                    <text x="750" y="175" text-anchor="middle" fill="white" font-size="16">高性能推理引擎</text>
+                    <!-- Title -->
+                    <text x="400" y="50" text-anchor="middle" fill="#2196F3" font-size="28" font-weight="bold">模型部署核心流水线</text>
+                </svg>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>技术</th>
+                        <th>角色</th>
+                        <th>关键特性</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>PyTorch</strong></td>
+                        <td>模型训练与动态图导出</td>
+                        <td>灵活的Python API，动态计算图，丰富的模型库，<code>torch.onnx.export()</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>ONNX</strong> (Open Neural Network Exchange)</td>
+                        <td>开放的模型中间表示格式</td>
+                        <td>框架无关的模型定义，算子标准化，模型可视化与验证工具</td>
+                    </tr>
+                    <tr>
+                        <td><strong>TensorRT</strong></td>
+                        <td>NVIDIA高性能深度学习推理SDK</td>
+                        <td>图层融合、精度校准（FP16/INT8）、内核自动调优、跨平台部署</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>2.1 一个简单的导出示例</h3>
+            <pre><code>import torch
+import torch.onnx
+
+# 1. 定义或加载一个PyTorch模型
+model = torch.nn.Sequential(
+    torch.nn.Linear(10, 50),
+    torch.nn.ReLU(),
+    torch.nn.Linear(50, 2)
+)
+model.eval()
+
+# 2. 创建示例输入
+dummy_input = torch.randn(1, 10)
+
+# 3. 导出为ONNX格式
+torch.onnx.export(
+    model,
+    dummy_input,
+    "my_model.onnx",
+    input_names=["input"],
+    output_names=["output"],
+    dynamic_axes={'input': {0: 'batch_size'}},
+    opset_version=13
+)
+print("✅ 模型已成功导出为 ONNX 格式！")</code></pre>
+        </section>
+
+        <section>
+            <h2>三、课程目标与学习路径</h2>
+            <h3>3.1 课程目标</h3>
+            <p>通过本课程，你将能够：</p>
+            <ol>
+                <li>深入理解模型部署的核心概念、流程与挑战。</li>
+                <li>掌握将PyTorch模型通过ONNX导出并优化到TensorRT引擎的完整技能。</li>
+                <li>学会在不同硬件平台（服务器GPU、Jetson边缘设备）上进行性能分析与调优。</li>
+                <li>构建一个完整的、可复用的模型部署项目 pipeline。</li>
+            </ol>
+
+            <h3>3.2 学习路径图</h3>
+            <div class="svg-container">
+                <svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#2196F3"/>
+                        </marker>
+                    </defs>
+                    <!-- Path Lines -->
+                    <path d="M 100,80 Q 200,80 250,120 T 400,160 T 550,200 T 700,240" stroke="#FF9800" stroke-width="4" fill="none" marker-end="url(#arrowhead)" stroke-dasharray="5,5"/>
+                    <!-- Steps -->
+                    <rect x="50" y="50" rx="10" ry="10" width="100" height="60" fill="#4CAF50" stroke="#333" stroke-width="2"/>
+                    <text x="100" y="85" text-anchor="middle" fill="white" font-size="16" font-weight="bold">基础概念</text>
+                    
+                    <rect x="200" y="110" rx="10" ry="10" width="100" height="60" fill="#2196F3" stroke="#333" stroke-width="2"/>
+                    <text x="250" y="145" text-anchor="middle" fill="white" font-size="16" font-weight="bold">PyTorch导出</text>
+                    
+                    <rect x="350" y="150" rx="10" ry="10" width="100" height="60" fill="#9C27B0" stroke="#333" stroke-width="2"/>
+                    <text x="400" y="185" text-anchor="middle" fill="white" font-size="16" font-weight="bold">ONNX中间化</text>
+                    
+                    <rect x="500" y="190" rx="10" ry="10" width="100" height="60" fill="#009688" stroke="#333" stroke-width="2"/>
+                    <text x="550" y="225" text-anchor="middle" fill="white" font-size="16" font-weight="bold">TensorRT优化</text>
+                    
+                    <rect x="650" y="230" rx="10" ry="10" width="100" height="60" fill="#FF9800" stroke="#333" stroke-width="2"/>
+                    <text x="700" y="265" text-anchor="middle" fill="white" font-size="16" font-weight="bold">部署实战</text>
+                    
+                    <text x="400" y="320" text-anchor="middle" fill="#333" font-size="18">从理论到实践的完整学习旅程</text>
+                </svg>
+            </div>
+
+            <h3>3.3 你将学到的关键技术标签</h3>
+            <p>
+                <span class="badge">torch.onnx.export</span>
+                <span class="badge">ONNX Runtime</span>
+                <span class="badge">TensorRT Builder</span>
+                <span class="badge">FP16/INT8 量化</span>
+                <span class="badge">图层融合</span>
+                <span class="badge">动态Shape</span>
+                <span class="badge">TRT Engine</span>
+                <span class="badge">Jetson部署</span>
+                <span class="badge">性能剖析</span>
+                <span class="badge">C++推理API</span>
+                <span class="badge">Python服务封装</span>
+                <span class="badge">Docker容器化</span>
+            </p>
+        </section>
+    </main>
+
+    <footer>
+        <p>课程内容精心设计，理论与实践并重，助你打通模型部署的“最后一公里”。</p>
+        <p class="footer-text">蓝海资料掘金营</p>
+        <p>探索技术深海，挖掘知识黄金</p>
+    </footer>
+</body>
+</html>

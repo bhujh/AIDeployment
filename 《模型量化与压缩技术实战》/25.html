@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视觉Transformer模型压缩实战</title>
+    <style>
+        :root {
+            --primary-color: #FFCC00; /* 明黄 */
+            --secondary-color: #33CC99; /* 青绿 */
+            --accent-color: #FF6666; /* 珊瑚红 */
+            --light-color: #F0F7FF; /* 淡蓝 */
+            --dark-color: #336699; /* 深蓝 */
+            --text-color: #333333;
+            --border-color: #99CCFF;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, var(--light-color) 0%, #E6FFE6 100%);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.92);
+            border: double 8px var(--border-color);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(51, 102, 153, 0.15);
+            overflow: hidden;
+            padding: 30px;
+        }
+        header {
+            text-align: center;
+            padding: 30px 20px;
+            background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+            margin: -30px -30px 30px -30px;
+            border-bottom: double 6px var(--dark-color);
+        }
+        h1 {
+            color: white;
+            font-size: 2.8rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: white;
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        h2 {
+            color: var(--dark-color);
+            border-left: 6px solid var(--accent-color);
+            padding-left: 15px;
+            margin: 40px 0 20px;
+            font-size: 1.8rem;
+        }
+        h3 {
+            color: var(--secondary-color);
+            margin: 25px 0 15px;
+            font-size: 1.4rem;
+        }
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        .highlight {
+            background-color: rgba(255, 204, 0, 0.15);
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid var(--primary-color);
+            margin: 20px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        th {
+            background-color: var(--secondary-color);
+            color: white;
+            font-weight: 600;
+        }
+        tr:nth-child(even) {
+            background-color: rgba(51, 204, 153, 0.08);
+        }
+        ul, ol {
+            padding-left: 30px;
+            margin: 15px 0;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .code-block {
+            background-color: #f8f9fa;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 25px 0;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+        .svg-container {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+        }
+        .architecture {
+            background-color: white;
+            padding: 25px;
+            border-radius: 15px;
+            border: 3px solid var(--border-color);
+            margin: 30px 0;
+        }
+        .strategy-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+        .strategy-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            border-top: 6px solid var(--primary-color);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+            transition: transform 0.3s;
+        }
+        .strategy-card:hover {
+            transform: translateY(-5px);
+        }
+        .strategy-card:nth-child(2) {
+            border-top-color: var(--secondary-color);
+        }
+        .strategy-card:nth-child(3) {
+            border-top-color: var(--accent-color);
+        }
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 25px;
+            border-top: double 5px var(--dark-color);
+            color: var(--dark-color);
+            font-size: 1.1rem;
+            font-weight: bold;
+            background-color: rgba(255, 255, 255, 0.7);
+            border-radius: 0 0 15px 15px;
+        }
+        .tag {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: var(--dark-color);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>视觉Transformer模型压缩实战</h1>
+            <p class="subtitle">第25讲：ViT模型特点、Transformer结构的量化与剪枝策略、轻量化ViT设计</p>
+        </header>
+
+        <section>
+            <h2>一、视觉Transformer (ViT) 模型核心特点</h2>
+            <p>Vision Transformer (ViT) 将自然语言处理中成功的Transformer架构引入计算机视觉领域，彻底改变了图像分类等任务的范式。</p>
+            
+            <div class="highlight">
+                <h3>核心创新点</h3>
+                <ul>
+                    <li><strong>图像分块嵌入 (Patch Embedding)</strong>：将图像分割为固定大小的块，线性投影为序列。</li>
+                    <li><strong>位置编码 (Position Embedding)</strong>：保留图像的空间位置信息。</li>
+                    <li><strong>Transformer编码器堆叠</strong>：多层自注意力机制和前馈网络构成特征提取主干。</li>
+                    <li><strong>类别令牌 (Class Token)</strong>：用于最终分类输出的特殊令牌。</li>
+                </ul>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>ViT 变体</th>
+                        <th>参数量 (M)</th>
+                        <th>计算量 (GFLOPs)</th>
+                        <th>ImageNet Top-1 精度</th>
+                        <th>主要特点</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>ViT-Base</td>
+                        <td>86</td>
+                        <td>17.6</td>
+                        <td>77.9%</td>
+                        <td>标准配置，12层，隐藏层768</td>
+                    </tr>
+                    <tr>
+                        <td>ViT-Large</td>
+                        <td>307</td>
+                        <td>61.6</td>
+                        <td>76.5%</td>
+                        <td>更深更宽，24层，隐藏层1024</td>
+                    </tr>
+                    <tr>
+                        <td>DeiT-Small</td>
+                        <td>22</td>
+                        <td>4.6</td>
+                        <td>79.8%</td>
+                        <td>蒸馏训练，更高效</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="svg-container">
+                <svg width="800" height="300" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="50" y="50" width="700" height="200" rx="10" fill="#E6F7FF" stroke="#336699" stroke-width="2"/>
+                    <text x="100" y="90" font-size="16" fill="#336699" font-weight="bold">输入图像 (224x224x3)</text>
+                    <rect x="100" y="100" width="100" height="40" fill="#FFCC00" rx="5"/>
+                    <text x="120" y="125" font-size="12" fill="#333">分块处理</text>
+                    <polygon points="220,120 240,110 240,130" fill="#336699"/>
+                    <rect x="250" y="100" width="120" height="40" fill="#33CC99" rx="5"/>
+                    <text x="270" y="125" font-size="12" fill="#333">线性投影</text>
+                    <polygon points="390,120 410,110 410,130" fill="#336699"/>
+                    <rect x="420" y="100" width="150" height="40" fill="#FF6666" rx="5"/>
+                    <text x="450" y="125" font-size="12" fill="#333">位置编码</text>
+                    <polygon points="590,120 610,110 610,130" fill="#336699"/>
+                    <rect x="620" y="100" width="100" height="40" fill="#9966CC" rx="5"/>
+                    <text x="640" y="125" font-size="12" fill="#333">Transformer</text>
+                    <text x="100" y="180" font-size="14" fill="#333">输出: 类别概率</text>
+                    <line x1="100" y1="150" x2="670" y2="150" stroke="#99CCFF" stroke-width="2" stroke-dasharray="5,5"/>
+                </svg>
+            </div>
+        </section>
+
+        <section>
+            <h2>二、Transformer结构的量化策略</h2>
+            <p>量化通过降低数值精度（如从FP32到INT8）来减少模型存储和计算开销，是模型压缩的关键技术。</p>
+            
+            <div class="strategy-grid">
+                <div class="strategy-card">
+                    <h3>1. 权重量化 (Weight Quantization)</h3>
+                    <ul>
+                        <li><strong>对称量化</strong>：零点为0，范围对称</li>
+                        <li><strong>非对称量化</strong>：零点可偏移，更灵活</li>
+                        <li><strong>逐通道量化</strong>：每个通道单独量化，精度更高</li>
+                    </ul>
+                    <div class="code-block">
+<pre># 伪代码：对称权重量化
+def symmetric_quantize(weights, bits=8):
+    scale = torch.max(torch.abs(weights)) / (2**(bits-1)-1)
+    quantized = torch.clamp(torch.round(weights / scale), 
+                           -2**(bits-1), 2**(bits-1)-1)
+    return quantized, scale</pre>
+                    </div>
+                </div>
+                
+                <div class="strategy-card">
+                    <h3>2. 激活量化 (Activation Quantization)</h3>
+                    <ul>
+                        <li><strong>动态量化</strong>：推理时统计范围</li>
+                        <li><strong>静态量化</strong>：校准集预先确定范围</li>
+                        <li><strong>注意力分数量化</strong>：Softmax前量化</li>
+                    </ul>
+                    <div class="code-block">
+<pre># 伪代码：静态激活量化校准
+def calibrate_activation(model, calib_loader):
+    model.eval()
+    max_vals = {}
+    with torch.no_grad():
+        for data in calib_loader:
+            output = model(data)
+            # 记录每层激活最大值
+            for name, module in model.named_modules():
+                if hasattr(module, 'activation_max'):
+                    max_vals[name] = max(max_vals.get(name, 0), 
+                                       module.activation_max)
+    return max_vals</pre>
+                    </div>
+                </div>
+                
+                <div class="strategy-card">
+                    <h3>3. 混合精度量化</h3>
+                    <ul>
+                        <li><strong>敏感层保留高精度</strong>：第一层和最后一层</li>
+                        <li><strong>注意力机制特殊处理</strong>：Q/K/V可不同精度</li>
+                        <li><strong>梯度感知量化</strong>：训练感知量化误差</li>
+                    </ul>
+                    <div class="code-block">
+<pre># 配置混合精度量化策略
+quant_config = {
+    'embedding': 'fp16',      # 嵌入层保持半精度
+    'attention.q': 'int8',    # Query矩阵int8
+    'attention.k': 'int8',    # Key矩阵int8  
+    'attention.v': 'fp16',    # Value矩阵半精度
+    'mlp': 'int8',           # 前馈网络int8
+    'classifier': 'fp16'      # 分类器半精度
+}</pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>三、Transformer剪枝策略</h2>
+            <p>剪枝通过移除不重要的参数或结构来减少模型复杂度。</p>
+            
+            <div class="architecture">
+                <h3>Transformer剪枝维度</h3>
+                <div class="svg-container">
+                    <svg width="750" height="350" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="100" y="50" width="550" height="250" rx="10" fill="#FFF9E6" stroke="#FFCC00" stroke-width="2"/>
+                        <circle cx="200" y="100" r="40" fill="#33CC99" opacity="0.8"/>
+                        <text x="185" y="105" font-size="14" fill="white" text-anchor="middle">权重<br>剪枝</text>
+                        <circle cx="350" y="100" r="40" fill="#FF6666" opacity="0.8"/>
+                        <text x="350" y="105" font-size="14" fill="white" text-anchor="middle">头/层<br>剪枝</text>
+                        <circle cx="500" y="100" r="40" fill="#9966CC" opacity="0.8"/>
+                        <text x="500" y="105" font-size="14" fill="white" text-anchor="middle">通道<br>剪枝</text>
+                        
+                        <rect x="150" y="180" width="120" height="40" fill="#99CCFF" rx="5"/>
+                        <text x="210" y="205" font-size="12" fill="#333" text-anchor="middle">非结构化</text>
+                        <rect x="300" y="180" width="120" height="40" fill="#99CCFF" rx="5"/>
+                        <text x="360" y="205" font-size="12" fill="#333" text-anchor="middle">结构化</text>
+                        <rect x="450" y="180" width="120" height="40" fill="#99CCFF" rx="5"/>
+                        <text x="510" y="205" font-size="12" fill="#333" text-anchor="middle">模式化</text>
+                        
+                        <line x1="200" y1="140" x2="210" y2="180" stroke="#336699" stroke-width="2"/>
+                        <line x1="350" y1="140" x2="360" y2="180" stroke="#336699" stroke-width="2"/>
+                        <line x1="500" y1="140" x2="510" y2="180" stroke="#336699" stroke-width="2"/>
+                        
+                        <text x="100" y="280" font-size="14" fill="#336699">基于幅值 | 基于梯度 | 基于Hessian</text>
+                    </svg>
+                </div>
+            </div>
+
+            <h3>具体剪枝技术</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>剪枝类型</th>
+                        <th>目标</th>
+                        <th>压缩率</th>
+                        <th>精度损失</th>
+                        <th>实现复杂度</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>注意力头剪枝</td>
+                        <td>移除冗余注意力头</td>
+                        <td>20-40%</td>
+                        <td>低 (&lt;1%)</td>
+                        <td>中</td>
+                    </tr>
+                    <tr>
+                        <td>层剪枝</td>
+                        <td>移除整个Transformer层</td>
+                        <td>30-50%</td>
+                        <td>中 (1-3%)</td>
+                        <td>低</td>
+                    </tr>
+                    <tr>
+                        <td>权重稀疏化</td>
+                        <td>零化小权重</td>
+                        <td>50-80%</td>
+                        <td>中高 (2-5%)</td>
+                        <td>高</td>
+                    </tr>
+                    <tr>
+                        <td>块稀疏剪枝</td>
+                        <td>移除整块权重</td>
+                        <td>40-70%</td>
+                        <td>低中 (1-2%)</td>
+                        <td>中</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div class="code-block">
+<pre># 注意力头重要性评估与剪枝
+def prune_attention_heads(model, pruning_ratio=0.3):
+    head_importance = calculate_head_importance(model)
+    
+    # 按重要性排序
+    sorted_heads = sorted(head_importance.items(), 
+                         key=lambda x: x[1])
+    
+    # 确定剪枝数量
+    num_heads_to_prune = int(len(sorted_heads) * pruning_ratio)
+    
+    # 标记要剪枝的头
+    heads_to_prune = [idx for idx, _ in sorted_heads[:num_heads_to_prune]]
+    
+    # 应用剪枝
+    model.prune_heads(heads_to_prune)
+    
+    return model</pre>
+            </div>
+        </section>
+
+        <section>
+            <h2>四、轻量化ViT设计</h2>
+            <p>从架构层面重新设计更高效的ViT变体。</p>
+            
+            <div class="highlight">
+                <h3>轻量化设计原则</h3>
+                <div class="tag">局部性增强</div>
+                <div class="tag">跨尺度特征</div>
+                <div class="tag">动态计算</div>
+                <div class="tag">结构重参数化</div>
+                <div class="tag">知识蒸馏</div>
+            </div>
+            
+            <h3>主流轻量化ViT架构对比</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>模型</th>
+                        <th>核心创新</th>
+                        <th>参数量</th>
+                        <th>ImageNet精度</th>
+                        <th>适用场景</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>MobileViT</td>
+                        <td>CNN+Transformer混合，移动端优化</td>
+                        <td>5.6M</td>
+                        <td>78.4%</td>
+                        <td>移动设备、边缘计算</td>
+                    </tr>
+                    <tr>
+                        <td>PVT (Pyramid Vision)</td>
+                        <td>金字塔结构，多尺度特征</td>
+                        <td>13.2M</td>
+                        <td>79.8%</td>
+                        <td>密集预测任务</td>
+                    </tr>
+                    <tr>
+                        <td>Swin Transformer</td>
+                        <td>滑动窗口，层次化设计</td>
+                        <td>29M</td>
+                        <td>83.3%</td>
+                        <td>通用视觉任务</td>
+                    </tr>
+                    <tr>
+                        <td>LeViT</td>
+                        <td>蒸馏训练，高效注意力</td>
+                        <td>9.1M</td>
+                        <td>80.0%</td>
+                        <td>实时推理</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div class="architecture">
+                <h3>轻量化ViT设计模式</h3>
+                <div class="svg-container">
+                    <svg width="800" height="400" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color:#FFCC00;stop-opacity:0.8" />
+                                <stop offset="100%" style="stop-color:#33CC99;stop-opacity:0.8" />
+                            </linearGradient>
+                        </defs>
+                        
+                        <!-- 输入 -->
+                        <rect x="50" y="50" width="120" height="60" rx="10" fill="#E6F7FF" stroke="#336699" stroke-width="2"/>
+                        <text x="110" y="85" font-size="14" fill="#336699" text-anchor="middle">输入图像</text>
+                        
+                        <!-- 阶段1 -->
+                        <rect x="200" y="30" width="150" height="100" rx="10" fill="url(#grad1)" stroke="#336699" stroke-width="2"/>
+                        <text x="275" y="60" font-size="14" fill="white" text-anchor="middle">阶段1</text>
+                        <text x="275" y="85" font-size="12" fill="white" text-anchor="middle">浅层CNN</text>
+                        <text x="275" y="105" font-size="10" fill="white" text-anchor="middle">局部特征提取</text>
+                        
+                        <!-- 阶段2 -->
+                        <rect x="380" y="30" width="150" height="100" rx="10" fill="url(#grad1)" stroke="#336699" stroke-width="2"/>
+                        <text x="455" y="60" font-size="14" fill="white" text-anchor="middle">阶段2</text>
+                        <text x="455" y="85" font-size="12" fill="white" text-anchor="middle">轻量Transformer</text>
+                        <text x="455" y="105" font-size="10" fill="white" text-anchor="middle">全局关系建模</text>
+                        
+                        <!-- 阶段3 -->
+                        <rect x="560" y="30" width="150" height="100" rx="10" fill="url(#grad1)" stroke="#336699" stroke-width="2"/>
+                        <text x="635" y="60" font-size="14" fill="white" text-anchor="middle">阶段3</text>
+                        <text x="635" y="85" font-size="12" fill="white" text-anchor="middle">特征融合</text>
+                        <text x="635" y="105" font-size="10" fill="white" text-anchor="middle">CNN+Transformer</text>
+                        
+                        <!-- 连接箭头 -->
+                        <polygon points="170,80 200,75 200,85" fill="#336699"/>
+                        <line x1="170" y1="80" x2="200" y2="80" stroke="#336699" stroke-width="2"/>
+                        
+                        <polygon points="350,80 380,75 380,85" fill="#336699"/>
+                        <line x1="350" y1="80" x2="380" y2="80" stroke="#336699" stroke-width="2"/>
+                        
+                        <polygon points="530,80 560,75 560,85" fill="#336699"/>
+                        <line x1="530" y1="80" x2="560" y2="80" stroke="#336699" stroke-width="2"/>
+                        
+                        <!-- 输出 -->
+                        <rect x="730" y="50" width="120" height="60" rx="10" fill="#FFE6E6" stroke="#FF6666" stroke-width="2"/>
+                        <text x="790" y="85" font-size="14" fill="#FF6666" text-anchor="middle">分类输出</text>
+                        
+                        <!-- 底部技术标签 -->
+                        <rect x="100" y="180" width="120" height="40" rx="5" fill="#99CCFF"/>
+                        <text x="160" y="205" font-size="12" fill="#333" text-anchor="middle">分块大小调整</text>
+                        
+                        <rect x="250" y="180" width="120" height="40" rx="5" fill="#99CCFF"/>
+                        <text x="310" y="205" font-size="12" fill="#333" text-anchor="middle">注意力简化</text>
+                        
+                        <rect x="400" y="180" width="120" height="40" rx="5" fill="#99CCFF"/>
+                        <text x="460" y="205" font-size="12" fill="#333" text-anchor="middle">FFN压缩</text>
+                        
+                        <rect x="550" y="180" width="120" height="40" rx="5" fill="#99CCFF"/>
+                        <text x="610" y="205" font-size="12" fill="#333" text-anchor="middle">早期下采样</text>
+                        
+                        <!-- 知识蒸馏 -->
+                        <rect x="200" y="250" width="400" height="60" rx="10" fill="#F0F7FF" stroke="#33CC99" stroke-width="2"/>
+                        <text x="400" y="280" font-size="14" fill="#33CC99" text-anchor="middle">知识蒸馏：教师模型 → 轻量学生模型</text>
+                        
+                        <!-- 连接线 -->
+                        <line x1="160" y1="140" x2="160" y2="180" stroke="#99CCFF" stroke-width="2" stroke-dasharray="5,5"/>
+                        <line x1="310" y1="140" x2="310" y2="180" stroke="#99CCFF" stroke-width="2" stroke-dasharray="5,5"/>
+                        <line x1="460" y1="140" x2="460" y2="180" stroke="#99CCFF" stroke-width="2" stroke-dasharray="5,5"/>
+                        <line x1="610" y1="140" x2="610" y2="180" stroke="#99CCFF" stroke-width="2" stroke-dasharray="5,5"/>
+                    </svg>
+                </div>
+            </div>
+            
+            <div class="code-block">
+<pre># 轻量化ViT示例：简化注意力机制
+class EfficientAttention(nn.Module):
+    def __init__(self, dim, num_heads=8, qkv_bias=False):
+        super().__init__()
+        self.num_heads = num_heads
+        head_dim = dim // num_heads
+        self.scale = head_dim ** -0.5
+        
+        # 减少QKV投影维度
+        reduced_dim = dim // 2
+        self.qkv = nn.Linear(dim, reduced_dim * 3, bias=qkv_bias)
+        self.proj = nn.Linear(reduced_dim, dim)
+        
+    def forward(self, x):
+        B, N, C = x.shape
+        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, -1)
+        q, k, v = qkv.unbind(2)
+        
+        # 简化注意力计算
+        attn = (q @ k.transpose(-2, -1)) * self.scale
+        attn = attn.softmax(dim=-1)
+        
+        x = (attn @ v).transpose(1, 2).reshape(B, N, -1)
+        x = self.proj(x)
+        return x</pre>
+            </div>
+        </section>
+
+        <section>
+            <h2>五、实战建议与最佳实践</h2>
+            <div class="strategy-grid">
+                <div class="strategy-card">
+                    <h3>压缩流程</h3>
+                    <ol>
+                        <li><strong>分析模型瓶颈</strong>：使用分析工具定位计算热点</li>
+                        <li><strong>渐进式压缩</strong>：先剪枝后量化，逐步压缩</li>
+                        <li><strong>精度恢复训练</strong>：压缩后微调恢复精度</li>
+                        <li><strong>硬件感知优化</strong>：针对部署硬件优化</li>
+                    </ol>
+                </div>
+                
+                <div class="strategy-card">
+                    <h3>评估指标</h3>
+                    <ul>
+                        <li><strong>压缩率</strong>：参数减少比例</li>
+                        <li><strong>加速比</strong>：推理速度提升</li>
+                        <li><strong>精度损失</strong>：Top-1/Top-5下降</li>
+                        <li><strong>能耗比</strong>：每瓦特性能</li>
+                    </ul>
+                </div>
+                
+                <div class="strategy-card">
+                    <h3>工具推荐</h3>
+                    <ul>
+                        <li><strong>PyTorch</strong>：torch.quantization, torch.nn.utils.prune</li>
+                        <li><strong>TensorFlow</strong>：TFLite, Model Optimization Toolkit</li>
+                        <li><strong>第三方</strong>：NNI, Distiller, TinyNeuralNetwork</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="highlight">
+                <h3>关键注意事项</h3>
+                <p>1. <strong>剪枝敏感度分析</strong>：不同层对剪枝的敏感度不同，需要分层处理。</p>
+                <p>2. <strong>量化校准</strong>：校准集应代表真实数据分布，避免量化偏差。</p>
+                <p>3. <strong>联合优化</strong>：剪枝、量化、蒸馏可联合使用，效果叠加。</p>
+                <p>4. <strong>部署验证</strong>：压缩后必须在目标硬件上验证实际性能。</p>
+            </div>
+        </section>
+
+        <footer>
+            <p>公众号: 蓝海资料掘金营，微信 deep3321</p>
+            <p>《模型量化与压缩技术实战》课程资料 • 第25讲 • 视觉Transformer模型压缩</p>
+        </footer>
+    </div>
+</body>
+</html>

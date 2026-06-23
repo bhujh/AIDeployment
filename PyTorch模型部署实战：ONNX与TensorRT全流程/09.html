@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TensorRT核心概念 - PyTorch模型部署实战</title>
+    <style>
+        :root {
+            --primary-blue: #4A90E2;
+            --primary-green: #7ED321;
+            --primary-yellow: #F8E71C;
+            --primary-orange: #F5A623;
+            --primary-red: #D0021B;
+            --light-bg: #F0F7FF;
+            --card-bg: #FFFFFF;
+            --text-dark: #333333;
+            --text-light: #666666;
+            --shadow: rgba(0, 0, 0, 0.1);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, var(--light-bg) 0%, #E6F2FF 100%);
+            color: var(--text-dark);
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px var(--shadow);
+            overflow: hidden;
+            padding: 30px;
+        }
+        header {
+            text-align: center;
+            padding: 30px 0;
+            background: linear-gradient(90deg, var(--primary-blue), var(--primary-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 30px;
+            border-bottom: 3px dashed var(--primary-yellow);
+        }
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            color: var(--text-light);
+            font-weight: 300;
+        }
+        section {
+            margin-bottom: 40px;
+            padding: 25px;
+            border-radius: 15px;
+            background-color: #f9fdff;
+            border-left: 5px solid var(--primary-blue);
+            box-shadow: 0 5px 15px rgba(74, 144, 226, 0.08);
+        }
+        h2 {
+            color: var(--primary-blue);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--primary-yellow);
+            display: inline-block;
+        }
+        h3 {
+            color: var(--primary-green);
+            margin: 15px 0 10px 0;
+        }
+        p {
+            margin-bottom: 15px;
+            color: var(--text-dark);
+        }
+        ul, ol {
+            padding-left: 25px;
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+            color: var(--text-light);
+        }
+        .highlight {
+            background-color: rgba(126, 211, 33, 0.15);
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid var(--primary-green);
+            margin: 20px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px var(--shadow);
+        }
+        th {
+            background-color: var(--primary-blue);
+            color: white;
+            padding: 15px;
+            text-align: left;
+        }
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #e1e8f0;
+        }
+        tr:nth-child(even) {
+            background-color: #f5f9ff;
+        }
+        tr:hover {
+            background-color: rgba(74, 144, 226, 0.1);
+        }
+        .code-block {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            border-left: 5px solid var(--primary-orange);
+        }
+        .architecture {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 30px 0;
+        }
+        .concept-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+        .concept-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+            border-top: 6px solid var(--primary-blue);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .concept-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(74, 144, 226, 0.15);
+        }
+        .concept-card h4 {
+            color: var(--primary-blue);
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+        .concept-card p {
+            color: var(--text-light);
+            font-size: 0.95rem;
+        }
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 25px;
+            color: var(--text-light);
+            border-top: 2px dashed var(--primary-yellow);
+            font-size: 1.1rem;
+            background-color: rgba(240, 247, 255, 0.7);
+            border-radius: 0 0 20px 20px;
+        }
+        .footer-text {
+            font-weight: bold;
+            color: var(--primary-blue);
+            font-size: 1.3rem;
+            letter-spacing: 2px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .badge-fp32 { background-color: #E3F2FD; color: #1565C0; }
+        .badge-fp16 { background-color: #E8F5E9; color: #2E7D32; }
+        .badge-int8 { background-color: #FFF3E0; color: #EF6C00; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>TensorRT核心概念详解</h1>
+            <p class="subtitle">《PyTorch模型部署实战：ONNX与TensorRT全流程》· 第9章</p>
+        </header>
+
+        <section>
+            <h2>TensorRT 概述</h2>
+            <p>NVIDIA TensorRT 是一个高性能的深度学习推理（Inference）优化器和运行时库。它旨在将训练好的模型以极低的延迟和高吞吐量部署到NVIDIA GPU上。理解其核心概念是掌握模型部署的关键。</p>
+            <div class="highlight">
+                <p><strong>核心目标：</strong> 将训练框架（如PyTorch, TensorFlow）导出的模型，通过层融合、精度校准、内核自动调优等技术，生成高度优化的推理引擎，实现极致的推理性能。</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>核心工作流</h2>
+            <p>典型的TensorRT部署流程包含几个关键步骤，从模型导入到最终推理执行。</p>
+            <div class="architecture">
+                <svg width="800" height="180" viewBox="0 0 800 180">
+                    <defs>
+                        <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#4A90E2;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#7ED321;stop-opacity:1" />
+                        </linearGradient>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#4A90E2"/>
+                        </marker>
+                    </defs>
+                    <rect x="20" y="70" rx="10" ry="10" width="140" height="60" fill="#E3F2FD" stroke="#4A90E2" stroke-width="2"/>
+                    <text x="90" y="105" text-anchor="middle" fill="#1565C0" font-weight="bold">训练模型</text>
+                    <text x="90" y="125" text-anchor="middle" fill="#666" font-size="14">(PyTorch/TF)</text>
+
+                    <path d="M 170 100 L 230 100" stroke="#4A90E2" stroke-width="2" marker-end="url(#arrowhead)"/>
+                    <text x="200" y="95" text-anchor="middle" fill="#F5A623" font-size="14">导出</text>
+
+                    <rect x="230" y="70" rx="10" ry="10" width="140" height="60" fill="#E8F5E9" stroke="#7ED321" stroke-width="2"/>
+                    <text x="300" y="105" text-anchor="middle" fill="#2E7D32" font-weight="bold">中间表示</text>
+                    <text x="300" y="125" text-anchor="middle" fill="#666" font-size="14">(ONNX/UFF)</text>
+
+                    <path d="M 380 100 L 440 100" stroke="#4A90E2" stroke-width="2" marker-end="url(#arrowhead)"/>
+                    <text x="410" y="95" text-anchor="middle" fill="#F5A623" font-size="14">解析与优化</text>
+
+                    <rect x="440" y="70" rx="10" ry="10" width="140" height="60" fill="#FFF3E0" stroke="#F5A623" stroke-width="2"/>
+                    <text x="510" y="105" text-anchor="middle" fill="#EF6C00" font-weight="bold">TensorRT</text>
+                    <text x="510" y="125" text-anchor="middle" fill="#666" font-size="14">Builder构建</text>
+
+                    <path d="M 590 100 L 650 100" stroke="#4A90E2" stroke-width="2" marker-end="url(#arrowhead)"/>
+                    <text x="620" y="95" text-anchor="middle" fill="#F5A623" font-size="14">序列化</text>
+
+                    <rect x="650" y="70" rx="10" ry="10" width="140" height="60" fill="#FCE4EC" stroke="#D0021B" stroke-width="2"/>
+                    <text x="720" y="105" text-anchor="middle" fill="#AD1457" font-weight="bold">推理引擎</text>
+                    <text x="720" y="125" text-anchor="middle" fill="#666" font-size="14">(Engine)</text>
+                </svg>
+            </div>
+            <ol>
+                <li><strong>模型导出：</strong> 从训练框架（如PyTorch）将模型导出为ONNX等中间格式。</li>
+                <li><strong>模型解析：</strong> TensorRT解析器（ONNX Parser）读取中间格式文件。</li>
+                <li><strong>网络构建与优化：</strong> <code>Builder</code> 根据模型定义和配置，进行图优化、层融合、选择最优内核。</li>
+                <li><strong>引擎生成：</strong> <code>Builder</code> 生成可序列化的优化推理 <code>Engine</code>。</li>
+                <li><strong>序列化与反序列化：</strong> 将 <code>Engine</code> 保存为文件（plan文件），供后续快速加载。</li>
+                <li><strong>推理执行：</strong> 加载 <code>Engine</code>，创建 <code>ExecutionContext</code>，执行输入数据并获取输出。</li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>五大核心组件</h2>
+            <p>理解以下五个核心对象是掌握TensorRT编程接口的基础。</p>
+            <div class="concept-grid">
+                <div class="concept-card">
+                    <h4>1. Builder (构建器)</h4>
+                    <p>负责从网络定义创建优化后的推理引擎。它是整个优化过程的核心控制器。</p>
+                    <ul>
+                        <li>配置优化参数（如精度、工作空间大小）</li>
+                        <li>执行层融合、内核自动调优</li>
+                        <li>生成序列化的引擎</li>
+                    </ul>
+                </div>
+                <div class="concept-card">
+                    <h4>2. Engine (引擎)</h4>
+                    <p>优化后模型的不可变表示，是Builder的输出。它包含了优化的网络和内核选择。</p>
+                    <ul>
+                        <li>可序列化到文件（.plan）</li>
+                        <li>保存了所有层的参数和最优内核</li>
+                        <li>反序列化后可直接用于推理</li>
+                    </ul>
+                </div>
+                <div class="concept-card">
+                    <h4>3. Context (执行上下文)</h4>
+                    <p>Engine的执行实例。负责管理推理时的状态，如输入/输出张量绑定、中间激活值等。</p>
+                    <ul>
+                        <li>一个Engine可创建多个Context</li>
+                        <li>持有推理执行时的中间状态</li>
+                        <li>执行实际的 <code>enqueue</code> 或 <code>execute</code> 方法</li>
+                    </ul>
+                </div>
+                <div class="concept-card">
+                    <h4>4. Network Definition (网络定义)</h4>
+                    <p>TensorRT内部对深度学习计算图的表示。可以通过解析器从文件导入，或通过API逐层手动构建。</p>
+                    <ul>
+                        <li>描述网络的计算图结构</li>
+                        <li>包含层定义、张量维度</li>
+                        <li>Builder的输入</li>
+                    </ul>
+                </div>
+                <div class="concept-card">
+                    <h4>5. Parser (解析器)</h4>
+                    <p>将外部模型格式（如ONNX, Caffe, UFF）转换为TensorRT内部的Network Definition。</p>
+                    <ul>
+                        <li>ONNX Parser最常用</li>
+                        <li>简化模型导入流程</li>
+                        <li>支持自定义层插件</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>精度模式</h2>
+            <p>TensorRT支持多种计算精度，以在精度、速度和模型大小之间取得平衡。</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>精度模式</th>
+                        <th>位宽</th>
+                        <th>优点</th>
+                        <th>缺点</th>
+                        <th>适用场景</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="badge badge-fp32">FP32</span> 单精度浮点</td>
+                        <td>32-bit</td>
+                        <td>精度最高，与训练精度一致</td>
+                        <td>速度最慢，内存占用最大</td>
+                        <td>对精度要求极高的任务（如科研）</td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge badge-fp16">FP16</span> 半精度浮点</td>
+                        <td>16-bit</td>
+                        <td>速度显著提升，内存减半，大多数GPU支持</td>
+                        <td>可能存在精度损失（需范围调整）</td>
+                        <td>绝大多数推理场景的默认选择</td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge badge-int8">INT8</span> 8位整型</td>
+                        <td>8-bit</td>
+                        <td>速度最快，内存仅为FP32的1/4</td>
+                        <td>需要校准数据集进行量化，精度损失风险最大</td>
+                        <td>边缘设备、高吞吐量服务、对延迟敏感的应用</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="highlight">
+                <p><strong>精度选择建议：</strong> 优先尝试FP16，它在大多数现代GPU（Volta架构及以后）上能提供显著的性能提升且精度损失可控。若对延迟和吞吐有极致要求，且模型支持良好，再考虑使用INT8量化。</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>代码示例：核心API流程</h2>
+            <p>以下伪代码展示了使用TensorRT C++ API的核心流程。</p>
+            <div class="code-block">
+<pre>
+#include &lt;NvInfer.h&gt;
+#include &lt;NvOnnxParser.h&gt;
+
+// 1. 创建日志记录器、构建器和网络定义
+auto logger = SampleUniquePtr&lt;nvinfer1::ILogger&gt;();
+nvinfer1::IBuilder* builder = nvinfer1::createInferBuilder(*logger);
+nvinfer1::INetworkDefinition* network = builder->createNetworkV2(...);
+
+// 2. 使用ONNX解析器填充网络定义
+auto parser = nvonnxparser::createParser(*network, *logger);
+parser->parseFromFile("model.onnx", ...);
+
+// 3. 配置构建器（设置精度、工作空间等）
+builder->setMaxBatchSize(32);
+builder->setFp16Mode(builder->platformHasFastFp16()); // 启用FP16
+builder->setMaxWorkspaceSize(1 &lt;&lt; 30); // 1GB
+
+// 4. 构建优化引擎
+nvinfer1::ICudaEngine* engine = builder->buildCudaEngine(*network);
+
+// 5. 序列化引擎并保存到文件
+nvinfer1::IHostMemory* serializedModel = engine->serialize();
+std::ofstream planFile("model.plan", std::ios::binary);
+planFile.write((const char*)serializedModel->data(), serializedModel->size());
+
+// 6. 清理资源
+serializedModel->destroy();
+engine->destroy();
+parser->destroy();
+network->destroy();
+builder->destroy();
+
+// --- 推理阶段 ---
+// 7. 从文件反序列化引擎
+nvinfer1::IRuntime* runtime = nvinfer1::createInferRuntime(*logger);
+std::ifstream planFile("model.plan", std::ios::binary);
+std::vector&lt;char&gt; planData(...);
+nvinfer1::ICudaEngine* loadedEngine = runtime->deserializeCudaEngine(...);
+
+// 8. 创建执行上下文
+nvinfer1::IExecutionContext* context = loadedEngine->createExecutionContext();
+
+// 9. 准备输入/输出缓冲区（GPU内存）
+void* buffers[2]; // 输入和输出
+cudaMalloc(&buffers[0], inputSize);
+cudaMalloc(&buffers[1], outputSize);
+
+// 10. 执行推理
+context->executeV2(buffers);
+
+// 11. 将结果拷贝回主机并处理
+cudaMemcpy(hostOutput, buffers[1], outputSize, cudaMemcpyDeviceToHost);
+</pre>
+            </div>
+        </section>
+
+        <section>
+            <h2>总结与要点</h2>
+            <ul>
+                <li><strong>工作流是基础：</strong> 理解“模型导出 -> 解析 -> 构建优化 -> 序列化 -> 加载推理”的完整链条。</li>
+                <li><strong>Builder是导演：</strong> 它控制着优化过程的所有配置，并生成最终的Engine。</li>
+                <li><strong>Engine是产品：</strong> 优化后的、可部署的“成品”，独立于构建过程。</li>
+                <li><strong>Context是执行者：</strong> 负责管理单次或多次推理执行的具体状态。</li>
+                <li><strong>精度是权衡：</strong> FP32/FP16/INT8代表了速度、精度和内存的经典权衡，根据硬件和目标选择。</li>
+                <li><strong>序列化是关键：</strong> 将耗时的优化过程与快速的推理部署分离，提升部署效率。</li>
+            </ul>
+            <div class="highlight">
+                <p>掌握这些核心概念，你就拿到了高效部署深度学习模型到NVIDIA GPU平台的钥匙。接下来的章节将带你进行具体的实战操作。</p>
+            </div>
+        </section>
+
+        <footer>
+            <p>课程内容：PyTorch模型部署实战：ONNX与TensorRT全流程</p>
+            <p class="footer-text">蓝海资料掘金营</p>
+            <p>探索技术深海，挖掘知识宝藏</p>
+        </footer>
+    </div>
+</body>
+</html>

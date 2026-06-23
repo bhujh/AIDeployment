@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识蒸馏技术原理 - 《模型量化与压缩技术实战》</title>
+    <style>
+        :root {
+            --primary-blue: #4A90E2;
+            --primary-yellow: #FFD700;
+            --primary-green: #7CB342;
+            --primary-orange: #FF9800;
+            --primary-red: #F44336;
+            --light-bg: #F9F7F3;
+            --card-bg: #FFFFFF;
+            --text-dark: #333333;
+            --text-light: #666666;
+            --border-color: #E0E0E0;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        body {
+            background-color: var(--light-bg);
+            color: var(--text-dark);
+            line-height: 1.6;
+            padding: 20px;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(255, 215, 0, 0.05) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(74, 144, 226, 0.05) 0%, transparent 20%);
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            border: 8px double var(--primary-blue);
+            position: relative;
+        }
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            right: 5px;
+            bottom: 5px;
+            border: 2px solid var(--primary-yellow);
+            border-radius: 15px;
+            pointer-events: none;
+            z-index: 1;
+        }
+        header {
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-green));
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        header h1 {
+            font-size: 2.8rem;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+            position: relative;
+            z-index: 2;
+        }
+        header .subtitle {
+            font-size: 1.3rem;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+        .decoration {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        .decoration svg {
+            position: absolute;
+            opacity: 0.2;
+        }
+        .content {
+            padding: 40px 30px;
+            position: relative;
+            z-index: 2;
+        }
+        section {
+            margin-bottom: 50px;
+            padding: 25px;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.9);
+            border-left: 6px solid var(--primary-orange);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease;
+        }
+        section:hover {
+            transform: translateY(-5px);
+        }
+        h2 {
+            color: var(--primary-blue);
+            border-bottom: 3px solid var(--primary-yellow);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+        }
+        h2 svg {
+            margin-right: 10px;
+            fill: var(--primary-green);
+        }
+        h3 {
+            color: var(--primary-green);
+            margin: 20px 0 15px;
+            font-size: 1.4rem;
+        }
+        p {
+            margin-bottom: 15px;
+            color: var(--text-light);
+        }
+        ul, ol {
+            padding-left: 25px;
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+            color: var(--text-light);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.05);
+        }
+        th {
+            background: linear-gradient(to right, var(--primary-blue), var(--primary-green));
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+        td {
+            padding: 15px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-light);
+        }
+        tr:nth-child(even) {
+            background-color: rgba(124, 179, 66, 0.05);
+        }
+        tr:hover {
+            background-color: rgba(255, 215, 0, 0.1);
+        }
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            border-left: 5px solid var(--primary-orange);
+        }
+        .diagram-container {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+        }
+        .diagram-container svg {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        .highlight {
+            background-color: rgba(255, 215, 0, 0.2);
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+        .comparison {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin: 30px 0;
+        }
+        .comparison-item {
+            flex: 1;
+            min-width: 300px;
+            padding: 25px;
+            border-radius: 15px;
+            background: white;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+        }
+        .comparison-item h4 {
+            color: var(--primary-red);
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+        }
+        footer {
+            background: linear-gradient(135deg, #333, #555);
+            color: white;
+            text-align: center;
+            padding: 30px;
+            font-size: 1.1rem;
+            border-top: 4px solid var(--primary-yellow);
+            position: relative;
+            z-index: 2;
+        }
+        footer p {
+            color: white;
+            margin: 0;
+        }
+        .footer-highlight {
+            color: var(--primary-yellow);
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2rem;
+            }
+            .content {
+                padding: 20px 15px;
+            }
+            section {
+                padding: 20px;
+            }
+            .comparison {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="decoration">
+                <svg width="200" height="200" viewBox="0 0 200 200" style="top:10%; left:5%;">
+                    <circle cx="100" cy="100" r="80" fill="none" stroke="white" stroke-width="2" stroke-dasharray="5,5"/>
+                    <polygon points="100,30 120,80 180,80 130,110 150,160 100,130 50,160 70,110 20,80 80,80" fill="white" opacity="0.3"/>
+                </svg>
+                <svg width="150" height="150" viewBox="0 0 150 150" style="bottom:10%; right:10%;">
+                    <rect x="30" y="30" width="90" height="90" fill="none" stroke="white" stroke-width="2"/>
+                    <path d="M30,75 L120,75 M75,30 L75,120" stroke="white" stroke-width="2"/>
+                    <circle cx="75" cy="75" r="40" fill="none" stroke="white" stroke-width="2"/>
+                </svg>
+            </div>
+            <h1>知识蒸馏技术原理</h1>
+            <p class="subtitle">第12讲：教师-学生模型框架、软标签与硬标签、损失函数设计、特征蒸馏与注意力蒸馏</p>
+            <p class="subtitle">《模型量化与压缩技术实战》课程核心内容</p>
+        </header>
+
+        <div class="content">
+            <section id="overview">
+                <h2>
+                    <svg width="24" height="24" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    技术概述
+                </h2>
+                <p><span class="highlight">知识蒸馏</span>是一种模型压缩技术，旨在将大型、复杂的教师模型的知识迁移到小型、高效的学生模型中。其核心思想是让学生模型不仅学习原始数据的标签，还学习教师模型输出的"软标签"和中间特征表示，从而在保持较高性能的同时大幅减少模型参数量和计算开销。</p>
+                <p>知识蒸馏由Hinton等人于2015年首次提出，现已成为模型压缩领域的关键技术之一，广泛应用于计算机视觉、自然语言处理等深度学习任务中。</p>
+                
+                <div class="diagram-container">
+                    <svg width="800" height="300" viewBox="0 0 800 300">
+                        <defs>
+                            <linearGradient id="teacherGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#4A90E2"/>
+                                <stop offset="100%" stop-color="#7CB342"/>
+                            </linearGradient>
+                            <linearGradient id="studentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#FF9800"/>
+                                <stop offset="100%" stop-color="#FFD700"/>
+                            </linearGradient>
+                        </defs>
+                        
+                        <!-- 教师模型 -->
+                        <rect x="50" y="50" width="200" height="200" rx="15" ry="15" fill="url(#teacherGrad)" opacity="0.9"/>
+                        <text x="150" y="100" text-anchor="middle" fill="white" font-size="18" font-weight="bold">教师模型</text>
+                        <text x="150" y="130" text-anchor="middle" fill="white" font-size="14">(大型、复杂)</text>
+                        <text x="150" y="180" text-anchor="middle" fill="white" font-size="14">高精度</text>
+                        <text x="150" y="210" text-anchor="middle" fill="white" font-size="14">高计算成本</text>
+                        
+                        <!-- 学生模型 -->
+                        <rect x="550" y="100" width="200" height="100" rx="15" ry="15" fill="url(#studentGrad)" opacity="0.9"/>
+                        <text x="650" y="140" text-anchor="middle" fill="white" font-size="18" font-weight="bold">学生模型</text>
+                        <text x="650" y="170" text-anchor="middle" fill="white" font-size="14">(小型、高效)</text>
+                        
+                        <!-- 箭头和知识流 -->
+                        <path d="M250 150 Q 400 100 550 150" stroke="#F44336" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+                        <text x="400" y="80" text-anchor="middle" fill="#F44336" font-size="16" font-weight="bold">知识迁移</text>
+                        
+                        <!-- 输入输出 -->
+                        <rect x="10" y="120" width="30" height="60" rx="5" ry="5" fill="#7CB342"/>
+                        <text x="25" y="155" text-anchor="middle" fill="white" font-size="14">输入</text>
+                        
+                        <rect x="760" y="120" width="30" height="60" rx="5" ry="5" fill="#FF9800"/>
+                        <text x="775" y="155" text-anchor="middle" fill="white" font-size="14">输出</text>
+                        
+                        <!-- 连接线 -->
+                        <path d="M40 150 H 50" stroke="#7CB342" stroke-width="2" fill="none"/>
+                        <path d="M750 150 H 760" stroke="#FF9800" stroke-width="2" fill="none"/>
+                        
+                        <!-- 知识类型标签 -->
+                        <circle cx="400" cy="200" r="8" fill="#FFD700"/>
+                        <text x="420" y="205" fill="#333" font-size="14">软标签知识</text>
+                        
+                        <circle cx="400" cy="230" r="8" fill="#4A90E2"/>
+                        <text x="420" y="235" fill="#333" font-size="14">特征知识</text>
+                        
+                        <circle cx="400" cy="260" r="8" fill="#7CB342"/>
+                        <text x="420" y="265" fill="#333" font-size="14">注意力知识</text>
+                        
+                        <defs>
+                            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                <polygon points="0 0, 10 3.5, 0 7" fill="#F44336"/>
+                            </marker>
+                        </defs>
+                    </svg>
+                </div>
+            </section>
+
+            <section id="framework">
+                <h2>
+                    <svg width="24" height="24" viewBox="0 0 24 24">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                    </svg>
+                    教师-学生模型框架
+                </h2>
+                <p>知识蒸馏的核心是教师-学生框架，其中教师模型是预先训练好的大型模型，学生模型是需要训练的小型模型。知识从教师模型传递到学生模型的过程称为"蒸馏"。</p>
+                
+                <h3>框架组件</h3>
+                <ul>
+                    <li><span class="highlight">教师模型</span>：通常是一个大型、高精度的预训练模型（如ResNet-50、BERT-large等），作为知识源。</li>
+                    <li><span class="highlight">学生模型</span>：小型、高效的模型（如MobileNet、TinyBERT等），需要学习教师模型的知识。</li>
+                    <li><span class="highlight">蒸馏损失函数</span>：衡量学生模型输出与教师模型输出之间的差异，指导知识迁移过程。</li>
+                    <li><span class="highlight">温度参数(T)</span>：控制输出概率分布的平滑程度，影响软标签的信息含量。</li>
+                </ul>
+                
+                <h3>蒸馏流程</h3>
+                <ol>
+                    <li>使用训练数据对教师模型进行训练（或使用预训练模型）</li>
+                    <li>固定教师模型参数，将其作为知识源</li>
+                    <li>设计学生模型架构，确保其参数量远小于教师模型</li>
+                    <li>使用包含蒸馏损失和原始任务损失的组合损失函数训练学生模型</li>
+                    <li>通过反向传播优化学生模型参数，使其模仿教师模型的行为</li>
+                </ol>
+                
+                <div class="code-block">
+<pre>
+# 伪代码：知识蒸馏训练流程
+def knowledge_distillation_training(teacher_model, student_model, 
+                                    train_loader, temperature=4.0, alpha=0.7):
+    
+    # 冻结教师模型参数
+    teacher_model.eval()
+    for param in teacher_model.parameters():
+        param.requires_grad = False
+    
+    # 定义损失函数
+    distillation_loss = nn.KLDivLoss()
+    student_loss = nn.CrossEntropyLoss()
+    
+    # 优化器
+    optimizer = torch.optim.Adam(student_model.parameters(), lr=0.001)
+    
+    for epoch in range(num_epochs):
+        for batch_idx, (data, target) in enumerate(train_loader):
+            # 前向传播
+            with torch.no_grad():
+                teacher_logits = teacher_model(data)
+                teacher_probs = F.softmax(teacher_logits / temperature, dim=1)
+            
+            student_logits = student_model(data)
+            student_probs = F.log_softmax(student_logits / temperature, dim=1)
+            
+            # 计算损失
+            loss_distill = distillation_loss(student_probs, teacher_probs)
+            loss_student = student_loss(student_logits, target)
+            
+            # 组合损失
+            loss = alpha * loss_distill * (temperature ** 2) + (1 - alpha) * loss_student
+            
+            # 反向传播
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+</pre>
+                </div>
+            </section>
+
+            <section id="labels">
+                <h2>
+                    <svg width="24" height="24" viewBox="0 0 24 24">
+                        <path d="M17.63 5.84C17.27 5.33 16.67 5 16 5L5 5.01C3.9 5.01 3 5.9 3 7v10c0 1.1.9 1.99 2 1.99L16 19c.67 0 1.27-.33 1.63-.84L22 12l-4.37-6.16z"/>
+                    </svg>
+                    软标签与硬标签
+                </h2>
+                <p>在知识蒸馏中，标签分为硬标签和软标签两种形式，它们携带不同层次的信息。</p>
+                
+                <div class="comparison">
+                    <div class="comparison-item">
+                        <h4>
+                            <svg width="20" height="20" viewBox="0 0 24 24" style="margin-right: 8px;">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="#F44336"/>
+                            </svg>
+                            硬标签 (Hard Labels)
+                        </h4>
+                        <ul>
+                            <li>传统的one-hot编码标签</li>
+                            <li>仅包含类别信息：正确类别为1，其他为0</li>
+                            <li>信息量有限，不包含类别间的关系</li>
+                            <li>示例：[0, 0, 1, 0, 0] 表示第3类</li>
+                            <li>训练目标：最小化交叉熵损失</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="comparison-item">
+                        <h4>
+                            <svg width="20" height="20" viewBox="0 0 24 24" style="margin-right: 8px;">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="#7CB342"/>
+                            </svg>
+                            软标签 (Soft Labels)
+                        </h4>
+                        <ul>
+                            <li>教师模型输出的概率分布</li>
+                            <li>包含丰富的"暗知识"：类别间的相似性关系</li>
+                            <li>通过温度参数T控制平滑程度</li>
+                            <li>示例：[0.01, 0.04, 0.85, 0.07, 0.03]</li>
+                            <li>训练目标：最小化KL散度损失</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <h3>温度参数(T)的作用</h3>
+                <p>温度参数是知识蒸馏中的关键超参数，用于控制输出概率分布的平滑程度：</p>
+                <ul>
+                    <li><span class="highlight">T=1</span>：标准softmax，概率分布较尖锐</li>
+                    <li><span class="highlight">T>1</span>：平滑的softmax，概率分布更平缓，包含更多类别间关系信息</li>
+                    <li><span class="highlight">T→∞</span>：所有类别概率趋于相等，变为均匀分布</li>
+                </ul>
+                
+                <p>软标签的计算公式：</p>
+                <div class="code-block">
+<pre>
+# 软标签计算公式
+def softmax_with_temperature(logits, temperature):
+    """
+    计算带温度参数的softmax
+    
+    参数:
+    logits: 模型输出的原始logits
+    temperature: 温度参数，控制分布的平滑程度
+    
+    返回:
+    平滑后的概率分布
+    """
+    exp_logits = np.exp(logits / temperature)
+    return exp_logits / np.sum(exp_logits, axis=1, keepdims=True)
+
+# 示例：不同温度下的概率分布
+logits = np.array([2.0, 1.0, 0.1])  # 原始logits
+
+# T=1时的概率分布
+probs_t1 = softmax_with_temperature(logits, temperature=1.0)
+# 结果: [0.659, 0.242, 0.099]
+
+# T=4时的概率分布
+probs_t4 = softmax_with_temperature(logits, temperature=4.0)
+# 结果: [0.431, 0.333, 0.236] - 更平滑，包含更多信息
+</pre>
+                </div>
+            </section>
+
+            <section id="loss">
+                <h2>
+                    <svg width="24" height="24" viewBox="0 0 24 24">
+                        <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+                    </svg>
+                    损失函数设计
+                </h2>
+                <p>知识蒸馏的损失函数通常由三部分组成：蒸馏损失、学生损失和可选的特征匹配损失。</p>
+                
+                <h3>标准知识蒸馏损失</h3>
+                <div class="code-block">
+<pre>
+# 标准知识蒸馏损失函数实现
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class KnowledgeDistillationLoss(nn.Module):
+    def __init__(self, temperature=4.0, alpha=0.7):
+        super(KnowledgeDistillationLoss, self).__init__()
+        self.temperature = temperature
+        self.alpha = alpha  # 蒸馏损失权重
+        self.kldiv = nn.KLDivLoss(reduction='batchmean')
+        self.ce = nn.CrossEntropyLoss()
+    
+    def forward(self, student_logits, teacher_logits, labels):
+        """
+        计算知识蒸馏损失
+        
+        参数:
+        student_logits: 学生模型的输出logits
+        teacher_logits: 教师模型的输出logits
+        labels: 真实标签（硬标签）
+        
+        返回:
+        总损失值
+        """
+        # 计算软标签损失（蒸馏损失）
+        soft_student = F.log_softmax(student_logits / self.temperature, dim=1)
+        soft_teacher = F.softmax(teacher_logits / self.temperature, dim=1)
+        loss_distill = self.kldiv(soft_student, soft_teacher) * (self.temperature ** 2)
+        
+        # 计算硬标签损失（学生损失）
+        loss_student = self.ce(student_logits, labels)
+        
+        # 组合损失
+        total_loss = self.alpha * loss_distill + (1 - self.alpha) * loss_student
+        
+        return total_loss
+</pre>
+                </div>
+                
+                <h3>损失函数变体</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>损失函数类型</th>
+                            <th>公式</th>
+                            <th>特点</th>
+                            <th>适用场景</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>标准KD损失</td>
+                            <td>L = α·L<sub>KD</sub> + (1-α)·L<sub>CE</sub></td>
+                            <td>平衡软硬标签学习</td>
+                            <td>通用分类任务</td>
+                        </tr>
+                        <tr>
+                            <td>注意力转移损失</td>
+                            <td>L = L<sub>CE</sub> + β·‖A<sub>S</sub>-A<sub>T</sub>‖<sup>2</sup></td>
+                            <td>匹配注意力图</td>
+                            <td>视觉任务，如图像分类</td>
+                        </tr>
+                        <tr>
+                            <td>特征匹配损失</td>
+                            <td>L = L<sub>CE</sub> + γ·‖F<sub>S</sub>-F<sub>T</sub>‖<sup>2</sup></td>
+                            <td>匹配中间层特征</td>
+                            <td>需要保留特征表示的任务</td>
+                        </tr>
+                        <tr>
+                            <td>关系蒸馏损失</td>
+                            <td>L = L<sub>CE</sub> + δ·R<sub>KD</sub>(ψ<sub>S</sub>, ψ<sub>T</sub>)</td>
+                            <td>匹配样本间关系</td>
+                            <td>度量学习、检索任务</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="distillation-types">
+                <h2>
+                    <svg width="24" height="24" viewBox="0 0 24 24">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 10h2v7H7zm4-3h2v10h-2zm4-3h2v13h-2z"/>
+                    </svg>
+                    特征蒸馏与注意力蒸馏
+                </h2>
+                <p>除了输出层的软标签蒸馏，还可以从中间层提取更丰富的知识，包括特征蒸馏和注意力蒸馏。</p>
+                
+                <h3>特征蒸馏 (Feature Distillation)</h3>
+                <p>特征蒸馏让学生模型学习教师模型的中间层特征表示，而不仅仅是最终输出。这通常通过匹配教师和学生模型在特定层的特征图来实现。</p>
+                
+                <div class="code-block">
+<pre>
+# 特征蒸馏损失实现
+class FeatureDistillationLoss(nn.Module):
+    def __init__(self, feature_dim, loss_type='mse'):
+        super(FeatureDistillationLoss, self).__init__()
+        self.feature_dim = feature_dim
+        self.loss_type = loss_type
+        
+        # 适配器层，用于对齐特征维度
+        if loss_type == 'attention':
+            self.adapter = nn.Conv2d(feature_dim[0], feature_dim[1], 1)
+        else:
+            self.adapter = nn.Sequential(
+                nn.Conv2d(feature_dim[0], feature_dim[1], 1),
+                nn.BatchNorm2d(feature_dim[1]),
+                nn.ReLU(inplace=True)
+            )
+        
+        if loss_type == 'mse':
+            self.criterion = nn.MSELoss()
+        elif loss_type == 'l1':
+            self.criterion = nn.L1Loss()
+        elif loss_type == 'cosine':
+            self.criterion = nn.CosineEmbeddingLoss()
+    
+    def forward(self, student_feat, teacher_feat):
+        """
+        计算特征蒸馏损失
+        
+        参数:
+        student_feat: 学生模型特征图 [B, C_s, H, W]
+        teacher_feat: 教师模型特征图 [B, C_t, H, W]
+        
+        返回:
+        特征匹配损失
+        """
+        # 维度对齐
+        if student_feat.size(1) != teacher_feat.size(1):
+            student_feat = self.adapter(student_feat)
+        
+        # 计算损失
+        if self.loss_type == 'cosine':
+            target = torch.ones(student_feat.size(0)).to(student_feat.device)
+            loss = self.criterion(
+                student_feat.view(student_feat.size(0), -1),
+                teacher_feat.view(teacher_feat.size(0), -1),
+                target
+            )
+        else:
+            loss = self.criterion(student_feat, teacher_feat)
+        
+        return loss
+</pre>
+                </div>
+                
+                <h3>注意力蒸馏 (Attention Distillation)</h3>
+                <p>注意力蒸馏基于"注意力图传递知识"的思想，让学生模型学习教师模型的注意力分布。这在视觉任务中特别有效，因为注意力图包含了模型关注的重要区域信息。</p>
+                
+                <div class="diagram-container">
+                    <svg width="700" height="400" viewBox="0 0 700 400">
+                        <defs>
+                            <linearGradient id="attentionGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#4A90E2"/>
+                                <stop offset="100%" stop-color="#7CB342"/>
+                            </linearGradient>
+                        </defs>
+                        
+                        <!-- 输入图像 -->
+                        <rect x="50" y="50" width="150" height="150" rx="10" ry="10" fill="#E0E0E0"/>
+                        <text x="125" y="135" text-anchor="middle" fill="#333" font-size="14">输入图像</text>
+                        
+                        <!-- 教师模型 -->
+                        <rect x="250" y="30" width="180" height="180" rx="10" ry="10" fill="url(#attentionGrad)" opacity="0.8"/>
+                        <text x="340" y="80" text-anchor="middle" fill="white" font-size="16" font-weight="bold">教师模型</text>
+                        
+                        <!-- 注意力图 -->
+                        <circle cx="340" cy="140" r="50" fill="#FF9800" opacity="0.7"/>
+                        <text x="340" y="140" text-anchor="middle" fill="white" font-size="14" font-weight="bold">注意力图</text>
+                        
+                        <!-- 学生模型 -->
+                        <rect x="250" y="230" width="180" height="120" rx="10" ry="10" fill="#FFD700" opacity="0.8"/>
+                        <text x="340" y="280" text-anchor="middle" fill="#333" font-size="16" font-weight="bold">学生模型</text>
+                        
+                        <!-- 箭头 -->
+                        <path d="M200 125 Q 240 100 250 120" stroke="#4A90E2" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+                        <path d="M340 210 Q 340 230 340 230" stroke="#F44336" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+                        <path d="M430 140 Q 500 140 550 140" stroke="#FF9800" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+                        <path d="M430 290 Q 500 290 550 290" stroke="#7CB342" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+                        
+                        <!-- 输出 -->
+                        <rect x="550" y="120" width="100" height="40" rx="5" ry="5" fill="#4A90E2"/>
+                        <text x="600" y="145" text-anchor="middle" fill="white" font-size="14">教师输出</text>
+                        
+                        <rect x="550" y="270" width="100" height="40" rx="5" ry="5" fill="#7CB342"/>
+                        <text x="600" y="295" text-anchor="middle" fill="white" font-size="14">学生输出</text>
+                        
+                        <!-- 注意力损失 -->
+                        <path d="M340 180 Q 400 150 450 180 Q 500 210 550 230" stroke="#F44336" stroke-width="2" fill="none" stroke-dasharray="5,5" marker-end="url(#arrow)"/>
+                        <text x="450" y="160" text-anchor="middle" fill="#F44336" font-size="14" font-weight="bold">注意力蒸馏损失</text>
+                        
+                        <defs>
+                            <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                <polygon points="0 0, 10 3.5, 0 7" fill="#333"/>
+                            </marker>
+                        </defs>
+                    </svg>
+                </div>
+                
+                <div class="code-block">
+<pre>
+# 注意力蒸馏损失实现
+class Attention
